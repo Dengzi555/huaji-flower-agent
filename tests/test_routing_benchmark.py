@@ -1,12 +1,15 @@
 """路由对比的评分器也需要回归：公平路径、零调用基线、真实ledger、失败与跳过分母。"""
 import io
 import json
+import hashlib
+import sqlite3
 import tempfile
 import unittest
+from contextlib import closing
 from datetime import date
 from pathlib import Path
 from unittest.mock import patch
-from ecommerce_agent.data import DataStore
+from ecommerce_agent.data import DataStore,FIELDS
 from ecommerce_agent.task_parser import ProductCatalog,parse_task
 from ecommerce_agent.provider import ChatProvider
 from ecommerce_agent.model_runtime import model_scope
@@ -38,6 +41,34 @@ class RoutingBenchmarkTests(unittest.TestCase):
     def proposal(self):
         return dict(decision='select',intent='query_sales_performance',selector='炽热爱意',start_date='2026-10-25',
             end_date='2026-10-25',metric='units_sold',direction='none',group_by='sku',limit=5)
+
+    def benchmark_fixture(self,folder,document):
+        """用随仓库分发的小快照构建临时年度接口，不依赖被忽略的本地整年数据库。
+
+        测试仍执行真实SQLite只读适配、工具、评分器和Claw导出，仅模型HTTP使用替身。
+        这两条样例没有年度oracle断言，因此不能借用本机answers.json充当测试条件。
+        """
+        root=folder/'fixture-root';version='0'*12;annual=root/'data/annual'/version
+        annual.mkdir(parents=True);(root/'ecommerce_agent').mkdir()
+        for source in (ROOT/'ecommerce_agent').glob('*.py'):
+            (root/'ecommerce_agent'/source.name).write_bytes(source.read_bytes())
+        (root/'data/intent_examples.json').write_bytes((ROOT/'data/intent_examples.json').read_bytes())
+        (annual/'products.json').write_bytes((ROOT/'data/products.json').read_bytes())
+        source_store=DataStore(ROOT/'data/stores/hx-sz-ns.json');snapshot=source_store.snapshot()
+        metadata={'schema':'flower-annual-sqlite-v1','meta':{k:v for k,v in snapshot.items() if k not in FIELDS},
+            'skus':sorted(source_store.skus),'dates':{table:sorted({r['date'] for r in snapshot.get(table,[])}) for table in FIELDS},
+            'content_sha256':hashlib.sha256(json.dumps(snapshot,sort_keys=True).encode()).hexdigest()}
+        with closing(sqlite3.connect(annual/'hx-sz-ns.sqlite3')) as db, db:
+            db.executescript('CREATE TABLE records(domain TEXT,sku TEXT,day TEXT,body TEXT,PRIMARY KEY(domain,sku,day)); CREATE TABLE metadata(key TEXT,value TEXT);')
+            for table in FIELDS:
+                db.executemany('INSERT INTO records VALUES(?,?,?,?)',[(table,r['sku_id'],r['date'],json.dumps(r)) for r in snapshot.get(table,[])])
+            db.execute('INSERT INTO metadata VALUES(?,?)',('dataset',json.dumps(metadata)))
+        manifest={'version':version,'stores':[{'id':'hx-sz-ns','content_sha256':metadata['content_sha256']}],
+            'fixture':'small_offline_test_snapshot'}
+        (annual/'manifest.json').write_text(json.dumps(manifest),encoding='utf-8')
+        (annual/'answers.json').write_text(json.dumps({'cases':[]}),encoding='utf-8')
+        document['fixture']['annual_version']=version
+        return root
 
     def test_rules_and_hybrid_shortcut_zero_calls_direct_calls_model_without_retrieval(self):
         calls=[]
@@ -116,9 +147,10 @@ class RoutingBenchmarkTests(unittest.TestCase):
             message={'tool_calls':[{'id':'plan','function':{'name':'plan_sales_query','arguments':json.dumps(proposal)}}]}
             return io.BytesIO(json.dumps({'choices':[{'message':message}],'usage':{'prompt_tokens':30,'completion_tokens':20,'total_tokens':50}}).encode())
         with tempfile.TemporaryDirectory() as folder:
-            folder=Path(folder);dataset=folder/'suite.json';dataset.write_text(json.dumps(document),encoding='utf-8')
+            folder=Path(folder);fixture_root=self.benchmark_fixture(folder,document)
+            dataset=folder/'suite.json';dataset.write_text(json.dumps(document),encoding='utf-8')
             with patch('urllib.request.urlopen',side_effect=response) as http:
-                report=run_benchmark(ROOT,dataset,folder/'output',live=True,settings=Settings(),retriever=lambda q:{'status':'fixture','candidates':[]})
+                report=run_benchmark(fixture_root,dataset,folder/'output',live=True,settings=Settings(),retriever=lambda q:{'status':'fixture','candidates':[]})
             self.assertEqual(http.call_count,1)
             self.assertEqual(len(report['rows']),6)
             for policy in ('rules_only','direct_model','hybrid'):
@@ -128,7 +160,7 @@ class RoutingBenchmarkTests(unittest.TestCase):
             claw=export_and_grade(folder/'output/report.json',CLAW,folder/'claw')
             self.assertEqual(claw['cases'],6);self.assertEqual(claw['model_usage']['total_tokens'],50)
             self.assertTrue(all(m['pass_hat_3'] is None for m in claw['metrics'].values()))
-            with self.assertRaises(ValueError):run_benchmark(ROOT,dataset,folder/'output')
+            with self.assertRaises(ValueError):run_benchmark(fixture_root,dataset,folder/'output')
 
 
 if __name__=='__main__':unittest.main()

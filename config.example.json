@@ -1,0 +1,11 @@
+{
+  "data_file": "data/sample.json",
+  "sku_id": "FLR-ROSE-19-BOUQUET",
+  "target_date": "2026-10-23",
+  "output_dir": "runs",
+  "api_base_url": "https://api.openai.com/v1",
+  "model": "REPLACE_WITH_YOUR_TOOL_CALLING_MODEL",
+  "api_key_env": "ECOMMERCE_AGENT_API_KEY",
+  "max_steps": 16,
+  "timeout_seconds": 180
+}

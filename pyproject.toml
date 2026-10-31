@@ -1,0 +1,11 @@
+[project]
+name = "ecommerce-investigation-agent"
+version = "0.10.0"
+requires-python = ">=3.11"
+dependencies = []
+readme = "README.md"
+license = {text = "MIT"}
+description = "多门店经营调查 Agent：只读工具、证据链与断言校验、离线评测"
+
+[project.optional-dependencies]
+semantic = ["fastembed==0.9.1"]

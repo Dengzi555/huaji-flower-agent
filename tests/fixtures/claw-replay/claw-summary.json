@@ -1,0 +1,116 @@
+{
+  "integration": "actual-claw-eval-core",
+  "dataset": "custom-flower-suite-not-official-benchmark",
+  "model_mode": "deterministic_workflow",
+  "model_calls": 0,
+  "judge_calls": 0,
+  "cases": 1,
+  "trials": 3,
+  "security_gate_passed": true,
+  "source_sha256": "fixture-source",
+  "dataset_sha256": "fixture-dataset",
+  "fixture_sha256": {},
+  "retrieval_summary": {},
+  "planning_tokens": {
+    "input": 0,
+    "output": 0
+  },
+  "model_usage": {
+    "prompt_tokens": 0,
+    "completion_tokens": 0,
+    "total_tokens": 0
+  },
+  "usage_unknown_trials": 0,
+  "observed_all_trials_passed": 0,
+  "metrics": {
+    "replay-case": {
+      "observed_trials": 3,
+      "pass_at_1": 0.6666666666666667,
+      "pass_hat_3": 0.2962962962962962
+    }
+  },
+  "results": [
+    {
+      "case_id": "replay-case",
+      "trial": 0,
+      "scores": {
+        "completion": 1.0,
+        "robustness": 1.0,
+        "communication": 0.0,
+        "safety": 1.0,
+        "efficiency_turns": 0,
+        "efficiency_tokens": 0,
+        "efficiency_wall_time_s": 0.0
+      },
+      "task_score": 1.0,
+      "passed": true,
+      "input_tokens": 0,
+      "output_tokens": 0,
+      "reported_model_usage": {
+        "prompt_tokens": 0,
+        "completion_tokens": 0,
+        "total_tokens": 0
+      },
+      "planning_usage": {},
+      "elapsed_ms": 10,
+      "trace": "replay-case-0.jsonl"
+    },
+    {
+      "case_id": "replay-case",
+      "trial": 1,
+      "scores": {
+        "completion": 0.0,
+        "robustness": 1.0,
+        "communication": 0.0,
+        "safety": 1.0,
+        "efficiency_turns": 0,
+        "efficiency_tokens": 0,
+        "efficiency_wall_time_s": 0.0
+      },
+      "task_score": 0.2,
+      "passed": false,
+      "input_tokens": 0,
+      "output_tokens": 0,
+      "reported_model_usage": {
+        "prompt_tokens": 0,
+        "completion_tokens": 0,
+        "total_tokens": 0
+      },
+      "planning_usage": {},
+      "elapsed_ms": 10,
+      "trace": "replay-case-1.jsonl"
+    },
+    {
+      "case_id": "replay-case",
+      "trial": 2,
+      "scores": {
+        "completion": 1.0,
+        "robustness": 1.0,
+        "communication": 0.0,
+        "safety": 1.0,
+        "efficiency_turns": 0,
+        "efficiency_tokens": 0,
+        "efficiency_wall_time_s": 0.0
+      },
+      "task_score": 1.0,
+      "passed": true,
+      "input_tokens": 0,
+      "output_tokens": 0,
+      "reported_model_usage": {
+        "prompt_tokens": 0,
+        "completion_tokens": 0,
+        "total_tokens": 0
+      },
+      "planning_usage": {},
+      "elapsed_ms": 10,
+      "trace": "replay-case-2.jsonl"
+    }
+  ],
+  "limitations": [
+    "使用Claw-Eval核心模型/reader/评分和Grader接口，未执行其通用Agent沙箱。",
+    "自定义花店样本与本地工具执行，不等于官方榜单成绩。",
+    "未启用语义LLM Judge，回答文风与建议质量尚未评分。",
+    "模型规划采用宿主审计快照；model_usage包括报告中已登记的模型阶段，不以规划回执代替工具循环用量。",
+    "上游TraceEnd整数token字段对未知使用兼容占位；真实未知状态以AuditSnapshot和model_usage为准。"
+  ]
+}

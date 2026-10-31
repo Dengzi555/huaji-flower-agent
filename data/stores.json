@@ -1,0 +1,70 @@
+{
+  "brand": "花仙女",
+  "default_store": "hx-sz-ns",
+  "stores": [
+    {
+      "id": "hx-sz-ns",
+      "name": "深圳南山店",
+      "city": "深圳",
+      "district": "南山区",
+      "aliases": [
+        "南山店",
+        "深圳南山"
+      ],
+      "status": "active"
+    },
+    {
+      "id": "hx-cq-na",
+      "name": "重庆南岸店",
+      "city": "重庆",
+      "district": "南岸区",
+      "aliases": [
+        "南岸店",
+        "重庆南岸"
+      ],
+      "status": "active"
+    },
+    {
+      "id": "hx-zz-trj",
+      "name": "郑州唐人街店",
+      "city": "郑州",
+      "aliases": [
+        "唐人街店",
+        "郑州唐人街"
+      ],
+      "status": "active"
+    },
+    {
+      "id": "hx-cd-yl",
+      "name": "成都玉林路店",
+      "city": "成都",
+      "aliases": [
+        "玉林路店",
+        "四川成都玉林路店"
+      ],
+      "status": "active"
+    },
+    {
+      "id": "hx-cd-cx",
+      "name": "成都春熙路店",
+      "city": "成都",
+      "aliases": [
+        "春熙路店",
+        "四川成都春熙路店"
+      ],
+      "status": "active"
+    },
+    {
+      "id": "hx-sz-ft",
+      "name": "深圳福田店",
+      "city": "深圳",
+      "district": "福田区",
+      "aliases": [
+        "福田店",
+        "深圳福田"
+      ],
+      "status": "active"
+    }
+  ],
+  "default_query_scope": "all"
+}

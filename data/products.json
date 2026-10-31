@@ -1,0 +1,774 @@
+{
+  "schema_version": 1,
+  "products": [
+    {
+      "sku_id": "FLR-ROSE-99-BOUQUET",
+      "short_name": "炽热爱意",
+      "stem_count": 99,
+      "variety": "红玫瑰",
+      "product_type": "花束",
+      "sample_unit_price": 159.9,
+      "name": "【炽热爱意】99朵红玫瑰花束送女友送爱人生日礼物生日鲜花花店鲜花上门情人节鲜花",
+      "variant": "99朵红玫瑰·花束",
+      "occasion_keywords": [
+        "生日礼物",
+        "生日鲜花",
+        "情人节鲜花"
+      ],
+      "aliases": [
+        "炽热爱意",
+        "99朵红玫瑰花束",
+        "99朵红玫瑰",
+        "99朵玫瑰",
+        "红玫瑰花束",
+        "玫瑰花束",
+        "红玫瑰",
+        "玫瑰"
+      ],
+      "listed_at": "2026-09-15",
+      "business_tags": [
+        "爆款"
+      ],
+      "series": "经典鲜花"
+    },
+    {
+      "sku_id": "FLR-ROSE-19-BOUQUET",
+      "short_name": "怦然心动",
+      "stem_count": 19,
+      "variety": "红玫瑰",
+      "product_type": "花束",
+      "sample_unit_price": 59.9,
+      "name": "【怦然心动】19朵红玫瑰花束送女友生日礼物生日花束情人节鲜花同城配送",
+      "variant": "19朵红玫瑰·花束",
+      "occasion_keywords": [
+        "生日礼物",
+        "生日花束",
+        "情人节鲜花"
+      ],
+      "aliases": [
+        "怦然心动",
+        "19朵红玫瑰花束",
+        "19朵红玫瑰",
+        "19朵玫瑰",
+        "红玫瑰花束",
+        "玫瑰花束",
+        "红玫瑰",
+        "玫瑰"
+      ],
+      "listed_at": "2026-09-15",
+      "business_tags": [
+        "常规款"
+      ],
+      "series": "经典鲜花"
+    },
+    {
+      "sku_id": "FLR-CARNATION-19-BOUQUET",
+      "short_name": "温柔时光",
+      "stem_count": 19,
+      "variety": "粉康乃馨",
+      "product_type": "花束",
+      "sample_unit_price": 49.9,
+      "name": "【温柔时光】19朵粉康乃馨花束送妈妈生日礼物生日花束母亲节鲜花同城配送",
+      "variant": "19朵粉康乃馨·花束",
+      "occasion_keywords": [
+        "生日礼物",
+        "生日花束",
+        "母亲节鲜花"
+      ],
+      "aliases": [
+        "温柔时光",
+        "19朵粉康乃馨花束",
+        "19朵康乃馨",
+        "粉康乃馨",
+        "粉色康乃馨",
+        "康乃馨花束",
+        "康乃馨"
+      ],
+      "listed_at": "2026-09-15",
+      "business_tags": [
+        "常规款"
+      ],
+      "series": "经典鲜花"
+    },
+    {
+      "sku_id": "FLR-ROSE-33-BUCKET",
+      "short_name": "心动满怀",
+      "stem_count": 33,
+      "variety": "红玫瑰",
+      "product_type": "抱抱桶",
+      "sample_unit_price": 99.9,
+      "name": "【心动满怀】33朵红玫瑰抱抱桶送女友生日礼物生日花束情人节鲜花闪购配送",
+      "variant": "33朵红玫瑰·抱抱桶",
+      "occasion_keywords": [
+        "生日礼物",
+        "生日花束",
+        "情人节鲜花"
+      ],
+      "aliases": [
+        "心动满怀",
+        "33朵红玫瑰抱抱桶",
+        "33朵玫瑰",
+        "红玫瑰抱抱桶",
+        "玫瑰抱抱桶",
+        "红玫瑰",
+        "玫瑰"
+      ],
+      "listed_at": "2026-09-15",
+      "business_tags": [
+        "常规款"
+      ],
+      "series": "经典鲜花"
+    },
+    {
+      "sku_id": "FLR-SUNFLOWER-11-BUCKET",
+      "short_name": "向阳而生",
+      "stem_count": 11,
+      "variety": "向日葵",
+      "product_type": "抱抱桶",
+      "sample_unit_price": 69.9,
+      "name": "【向阳而生】11朵向日葵抱抱桶生日礼物生日花束毕业季鲜花同城配送",
+      "variant": "11朵向日葵·抱抱桶",
+      "occasion_keywords": [
+        "生日礼物",
+        "生日花束",
+        "毕业季鲜花"
+      ],
+      "aliases": [
+        "向阳而生",
+        "11朵向日葵抱抱桶",
+        "11朵向日葵",
+        "向日葵抱抱桶",
+        "向日葵"
+      ],
+      "listed_at": "2026-09-15",
+      "business_tags": [
+        "常规款"
+      ],
+      "series": "经典鲜花"
+    },
+    {
+      "sku_id": "FLR-WUMEI-33-BUCKET",
+      "short_name": "暮色微醺",
+      "stem_count": 33,
+      "variety": "乌梅玫瑰",
+      "product_type": "抱抱桶",
+      "sample_unit_price": 119.9,
+      "series": "乌梅系列",
+      "business_tags": [
+        "常规款"
+      ],
+      "listed_at": "2026-09-15",
+      "name": "【暮色微醺】33朵乌梅玫瑰抱抱桶乌梅系列生日礼物生日花束同城鲜花上门",
+      "variant": "33朵乌梅玫瑰·抱抱桶",
+      "aliases": [
+        "33朵乌梅玫瑰抱抱桶",
+        "乌梅玫瑰",
+        "乌梅玫瑰抱抱桶",
+        "乌梅系列",
+        "暮色微醺"
+      ],
+      "occasion_keywords": [
+        "生日礼物",
+        "生日花束",
+        "同城鲜花上门"
+      ]
+    },
+    {
+      "sku_id": "FLR-WUMEI-19-BOUQUET",
+      "short_name": "莓好如初",
+      "stem_count": 19,
+      "variety": "乌梅玫瑰",
+      "product_type": "花束",
+      "sample_unit_price": 69.9,
+      "series": "乌梅系列",
+      "business_tags": [
+        "常规款"
+      ],
+      "listed_at": "2026-09-15",
+      "name": "【莓好如初】19朵乌梅玫瑰花束乌梅系列生日礼物生日花束同城鲜花上门",
+      "variant": "19朵乌梅玫瑰·花束",
+      "aliases": [
+        "19朵乌梅玫瑰花束",
+        "乌梅玫瑰",
+        "乌梅玫瑰花束",
+        "乌梅系列",
+        "莓好如初"
+      ],
+      "occasion_keywords": [
+        "生日礼物",
+        "生日花束",
+        "同城鲜花上门"
+      ]
+    },
+    {
+      "sku_id": "FLR-EUSTOMA-11-BOUQUET",
+      "short_name": "云间来信",
+      "stem_count": 11,
+      "variety": "白洋桔梗",
+      "product_type": "花束",
+      "sample_unit_price": 59.9,
+      "series": "洋桔梗系列",
+      "business_tags": [
+        "新品"
+      ],
+      "listed_at": "2026-10-25",
+      "name": "【云间来信】11朵白洋桔梗花束洋桔梗系列生日礼物生日花束同城鲜花上门",
+      "variant": "11朵白洋桔梗·花束",
+      "aliases": [
+        "11朵白洋桔梗花束",
+        "云间来信",
+        "洋桔梗",
+        "洋桔梗系列",
+        "白洋桔梗",
+        "白洋桔梗花束"
+      ],
+      "occasion_keywords": [
+        "生日礼物",
+        "生日花束",
+        "同城鲜花上门"
+      ]
+    },
+    {
+      "sku_id": "FLR-EUSTOMA-19-BOUQUET",
+      "short_name": "紫意悠然",
+      "stem_count": 19,
+      "variety": "紫洋桔梗",
+      "product_type": "花束",
+      "sample_unit_price": 79.9,
+      "series": "洋桔梗系列",
+      "business_tags": [
+        "常规款"
+      ],
+      "listed_at": "2026-09-15",
+      "name": "【紫意悠然】19朵紫洋桔梗花束洋桔梗系列生日礼物生日花束同城鲜花上门",
+      "variant": "19朵紫洋桔梗·花束",
+      "aliases": [
+        "19朵紫洋桔梗花束",
+        "洋桔梗",
+        "洋桔梗系列",
+        "紫意悠然",
+        "紫洋桔梗",
+        "紫洋桔梗花束"
+      ],
+      "occasion_keywords": [
+        "生日礼物",
+        "生日花束",
+        "同城鲜花上门"
+      ]
+    },
+    {
+      "sku_id": "FLR-APPLEJACK-19-BOUQUET",
+      "short_name": "青野来信",
+      "stem_count": 19,
+      "variety": "苹果杰克",
+      "product_type": "花束",
+      "sample_unit_price": 89.9,
+      "series": "苹果杰克系列",
+      "business_tags": [
+        "常规款"
+      ],
+      "listed_at": "2026-09-15",
+      "name": "【青野来信】19朵苹果杰克花束苹果杰克系列生日礼物生日花束同城鲜花上门",
+      "variant": "19朵苹果杰克·花束",
+      "aliases": [
+        "19朵苹果杰克花束",
+        "苹果杰克",
+        "苹果杰克系列",
+        "苹果杰克花束",
+        "青野来信"
+      ],
+      "occasion_keywords": [
+        "生日礼物",
+        "生日花束",
+        "同城鲜花上门"
+      ]
+    },
+    {
+      "sku_id": "FLR-APPLEJACK-33-BUCKET",
+      "short_name": "绿意漫生",
+      "stem_count": 33,
+      "variety": "苹果杰克",
+      "product_type": "抱抱桶",
+      "sample_unit_price": 129.9,
+      "series": "苹果杰克系列",
+      "business_tags": [
+        "长尾款"
+      ],
+      "listed_at": "2026-09-15",
+      "name": "【绿意漫生】33朵苹果杰克抱抱桶苹果杰克系列生日礼物生日花束同城鲜花上门",
+      "variant": "33朵苹果杰克·抱抱桶",
+      "aliases": [
+        "33朵苹果杰克抱抱桶",
+        "绿意漫生",
+        "苹果杰克",
+        "苹果杰克抱抱桶",
+        "苹果杰克系列"
+      ],
+      "occasion_keywords": [
+        "生日礼物",
+        "生日花束",
+        "同城鲜花上门"
+      ]
+    },
+    {
+      "sku_id": "FLR-DOPAMINE-19-BOUQUET",
+      "short_name": "缤纷心动",
+      "stem_count": 19,
+      "variety": "混色玫瑰",
+      "product_type": "花束",
+      "sample_unit_price": 59.9,
+      "series": "多巴胺系列",
+      "business_tags": [
+        "爆款"
+      ],
+      "listed_at": "2026-09-15",
+      "name": "【缤纷心动】19朵混色玫瑰花束多巴胺系列生日礼物生日花束同城鲜花上门",
+      "variant": "19朵混色玫瑰·花束",
+      "aliases": [
+        "19朵混色玫瑰花束",
+        "多巴胺系列",
+        "混色玫瑰",
+        "混色玫瑰花束",
+        "缤纷心动"
+      ],
+      "occasion_keywords": [
+        "生日礼物",
+        "生日花束",
+        "同城鲜花上门"
+      ]
+    },
+    {
+      "sku_id": "FLR-DOPAMINE-33-BUCKET",
+      "short_name": "夏日缤纷",
+      "stem_count": 33,
+      "variety": "混色玫瑰",
+      "product_type": "抱抱桶",
+      "sample_unit_price": 99.9,
+      "series": "多巴胺系列",
+      "business_tags": [
+        "常规款"
+      ],
+      "listed_at": "2026-09-15",
+      "name": "【夏日缤纷】33朵混色玫瑰抱抱桶多巴胺系列生日礼物生日花束同城鲜花上门",
+      "variant": "33朵混色玫瑰·抱抱桶",
+      "aliases": [
+        "33朵混色玫瑰抱抱桶",
+        "夏日缤纷",
+        "多巴胺系列",
+        "混色玫瑰",
+        "混色玫瑰抱抱桶"
+      ],
+      "occasion_keywords": [
+        "生日礼物",
+        "生日花束",
+        "同城鲜花上门"
+      ]
+    },
+    {
+      "sku_id": "FLR-PURPLE-19-BOUQUET",
+      "short_name": "紫梦星河",
+      "stem_count": 19,
+      "variety": "紫玫瑰",
+      "product_type": "花束",
+      "sample_unit_price": 69.9,
+      "series": "紫玫系列",
+      "business_tags": [
+        "常规款"
+      ],
+      "listed_at": "2026-09-15",
+      "name": "【紫梦星河】19朵紫玫瑰花束紫玫系列生日礼物生日花束同城鲜花上门",
+      "variant": "19朵紫玫瑰·花束",
+      "aliases": [
+        "19朵紫玫瑰花束",
+        "紫梦星河",
+        "紫玫瑰",
+        "紫玫瑰花束",
+        "紫玫系列"
+      ],
+      "occasion_keywords": [
+        "生日礼物",
+        "生日花束",
+        "同城鲜花上门"
+      ]
+    },
+    {
+      "sku_id": "FLR-PURPLE-33-BUCKET",
+      "short_name": "紫夜星辰",
+      "stem_count": 33,
+      "variety": "紫玫瑰",
+      "product_type": "抱抱桶",
+      "sample_unit_price": 109.9,
+      "series": "紫玫系列",
+      "business_tags": [
+        "长尾款"
+      ],
+      "listed_at": "2026-09-15",
+      "name": "【紫夜星辰】33朵紫玫瑰抱抱桶紫玫系列生日礼物生日花束同城鲜花上门",
+      "variant": "33朵紫玫瑰·抱抱桶",
+      "aliases": [
+        "33朵紫玫瑰抱抱桶",
+        "紫夜星辰",
+        "紫玫瑰",
+        "紫玫瑰抱抱桶",
+        "紫玫系列"
+      ],
+      "occasion_keywords": [
+        "生日礼物",
+        "生日花束",
+        "同城鲜花上门"
+      ]
+    },
+    {
+      "sku_id": "FLR-ANGEL-19-BOUQUET",
+      "short_name": "纯白心语",
+      "stem_count": 19,
+      "variety": "白玫瑰",
+      "product_type": "花束",
+      "sample_unit_price": 79.9,
+      "series": "天使之翼",
+      "business_tags": [
+        "常规款"
+      ],
+      "listed_at": "2026-09-15",
+      "name": "【纯白心语】19朵白玫瑰花束天使之翼生日礼物生日花束同城鲜花上门",
+      "variant": "19朵白玫瑰·花束",
+      "aliases": [
+        "19朵白玫瑰花束",
+        "天使之翼",
+        "白玫瑰",
+        "白玫瑰花束",
+        "纯白心语"
+      ],
+      "occasion_keywords": [
+        "生日礼物",
+        "生日花束",
+        "同城鲜花上门"
+      ]
+    },
+    {
+      "sku_id": "FLR-GRAPE-19-BOUQUET",
+      "short_name": "晴光微醺",
+      "stem_count": 19,
+      "variety": "混色玫瑰",
+      "product_type": "花束",
+      "sample_unit_price": 89.9,
+      "series": "晴天葡萄",
+      "business_tags": [
+        "长尾款"
+      ],
+      "listed_at": "2026-09-15",
+      "name": "【晴光微醺】19朵混色玫瑰花束晴天葡萄生日礼物生日花束同城鲜花上门",
+      "variant": "19朵混色玫瑰·花束",
+      "aliases": [
+        "19朵混色玫瑰花束",
+        "晴光微醺",
+        "晴天葡萄",
+        "混色玫瑰",
+        "混色玫瑰花束"
+      ],
+      "occasion_keywords": [
+        "生日礼物",
+        "生日花束",
+        "同城鲜花上门"
+      ]
+    },
+    {
+      "sku_id": "FLR-CAPPUCCINO-19-BOUQUET",
+      "short_name": "暖调私语",
+      "stem_count": 19,
+      "variety": "卡布奇诺玫瑰",
+      "product_type": "花束",
+      "sample_unit_price": 99.9,
+      "series": "复古系列",
+      "business_tags": [
+        "常规款"
+      ],
+      "listed_at": "2026-09-15",
+      "name": "【暖调私语】19朵卡布奇诺玫瑰花束复古系列生日礼物生日花束同城鲜花上门",
+      "variant": "19朵卡布奇诺玫瑰·花束",
+      "aliases": [
+        "19朵卡布奇诺玫瑰花束",
+        "卡布奇诺玫瑰",
+        "卡布奇诺玫瑰花束",
+        "复古系列",
+        "暖调私语"
+      ],
+      "occasion_keywords": [
+        "生日礼物",
+        "生日花束",
+        "同城鲜花上门"
+      ]
+    },
+    {
+      "sku_id": "FLR-MANTA-19-BOUQUET",
+      "short_name": "柔雾晨光",
+      "stem_count": 19,
+      "variety": "曼塔玫瑰",
+      "product_type": "花束",
+      "sample_unit_price": 79.9,
+      "series": "复古系列",
+      "business_tags": [
+        "长尾款"
+      ],
+      "listed_at": "2026-09-15",
+      "name": "【柔雾晨光】19朵曼塔玫瑰花束复古系列生日礼物生日花束同城鲜花上门",
+      "variant": "19朵曼塔玫瑰·花束",
+      "aliases": [
+        "19朵曼塔玫瑰花束",
+        "复古系列",
+        "曼塔玫瑰",
+        "曼塔玫瑰花束",
+        "柔雾晨光"
+      ],
+      "occasion_keywords": [
+        "生日礼物",
+        "生日花束",
+        "同城鲜花上门"
+      ]
+    },
+    {
+      "sku_id": "FLR-OCEAN-19-BOUQUET",
+      "short_name": "海风轻语",
+      "stem_count": 19,
+      "variety": "海洋之歌玫瑰",
+      "product_type": "花束",
+      "sample_unit_price": 89.9,
+      "series": "紫调系列",
+      "business_tags": [
+        "常规款"
+      ],
+      "listed_at": "2026-09-15",
+      "name": "【海风轻语】19朵海洋之歌玫瑰花束紫调系列生日礼物生日花束同城鲜花上门",
+      "variant": "19朵海洋之歌玫瑰·花束",
+      "aliases": [
+        "19朵海洋之歌玫瑰花束",
+        "海洋之歌玫瑰",
+        "海洋之歌玫瑰花束",
+        "海风轻语",
+        "紫调系列"
+      ],
+      "occasion_keywords": [
+        "生日礼物",
+        "生日花束",
+        "同城鲜花上门"
+      ]
+    },
+    {
+      "sku_id": "FLR-ZIXIA-19-BOUQUET",
+      "short_name": "霞光入梦",
+      "stem_count": 19,
+      "variety": "紫霞仙子玫瑰",
+      "product_type": "花束",
+      "sample_unit_price": 79.9,
+      "series": "紫调系列",
+      "business_tags": [
+        "长尾款"
+      ],
+      "listed_at": "2026-09-15",
+      "name": "【霞光入梦】19朵紫霞仙子玫瑰花束紫调系列生日礼物生日花束同城鲜花上门",
+      "variant": "19朵紫霞仙子玫瑰·花束",
+      "aliases": [
+        "19朵紫霞仙子玫瑰花束",
+        "紫调系列",
+        "紫霞仙子玫瑰",
+        "紫霞仙子玫瑰花束",
+        "霞光入梦"
+      ],
+      "occasion_keywords": [
+        "生日礼物",
+        "生日花束",
+        "同城鲜花上门"
+      ]
+    },
+    {
+      "sku_id": "FLR-SNOW-19-BOUQUET",
+      "short_name": "雪落清欢",
+      "stem_count": 19,
+      "variety": "白雪山玫瑰",
+      "product_type": "花束",
+      "sample_unit_price": 69.9,
+      "series": "纯白系列",
+      "business_tags": [
+        "常规款"
+      ],
+      "listed_at": "2026-09-15",
+      "name": "【雪落清欢】19朵白雪山玫瑰花束纯白系列生日礼物生日花束同城鲜花上门",
+      "variant": "19朵白雪山玫瑰·花束",
+      "aliases": [
+        "19朵白雪山玫瑰花束",
+        "白雪山玫瑰",
+        "白雪山玫瑰花束",
+        "纯白系列",
+        "雪落清欢"
+      ],
+      "occasion_keywords": [
+        "生日礼物",
+        "生日花束",
+        "同城鲜花上门"
+      ]
+    },
+    {
+      "sku_id": "FLR-SUNFLOWER-5-BOUQUET",
+      "short_name": "晴日有你",
+      "stem_count": 5,
+      "variety": "向日葵",
+      "product_type": "花束",
+      "sample_unit_price": 49.9,
+      "series": "向阳系列",
+      "business_tags": [
+        "常规款"
+      ],
+      "listed_at": "2026-09-15",
+      "name": "【晴日有你】5朵向日葵花束向阳系列生日礼物生日花束同城鲜花上门",
+      "variant": "5朵向日葵·花束",
+      "aliases": [
+        "5朵向日葵花束",
+        "向日葵",
+        "向日葵花束",
+        "向阳系列",
+        "晴日有你"
+      ],
+      "occasion_keywords": [
+        "生日礼物",
+        "生日花束",
+        "同城鲜花上门"
+      ]
+    },
+    {
+      "sku_id": "FLR-LILY-6-BOUQUET",
+      "short_name": "百事合意",
+      "stem_count": 6,
+      "variety": "白百合",
+      "product_type": "花束",
+      "sample_unit_price": 69.9,
+      "series": "百合系列",
+      "business_tags": [
+        "常规款"
+      ],
+      "listed_at": "2026-09-15",
+      "name": "【百事合意】6朵白百合花束百合系列生日礼物生日花束同城鲜花上门",
+      "variant": "6朵白百合·花束",
+      "aliases": [
+        "6朵白百合花束",
+        "白百合",
+        "白百合花束",
+        "百事合意",
+        "百合系列"
+      ],
+      "occasion_keywords": [
+        "生日礼物",
+        "生日花束",
+        "同城鲜花上门"
+      ]
+    },
+    {
+      "sku_id": "FLR-HYDRANGEA-3-BOUQUET",
+      "short_name": "蓝屿清风",
+      "stem_count": 3,
+      "variety": "蓝绣球",
+      "product_type": "花束",
+      "sample_unit_price": 79.9,
+      "series": "绣球系列",
+      "business_tags": [
+        "长尾款"
+      ],
+      "listed_at": "2026-09-15",
+      "name": "【蓝屿清风】3朵蓝绣球花束绣球系列生日礼物生日花束同城鲜花上门",
+      "variant": "3朵蓝绣球·花束",
+      "aliases": [
+        "3朵蓝绣球花束",
+        "绣球系列",
+        "蓝屿清风",
+        "蓝绣球",
+        "蓝绣球花束"
+      ],
+      "occasion_keywords": [
+        "生日礼物",
+        "生日花束",
+        "同城鲜花上门"
+      ]
+    },
+    {
+      "sku_id": "FLR-PINGPONG-9-BOUQUET",
+      "short_name": "团团圆满",
+      "stem_count": 9,
+      "variety": "白乒乓菊",
+      "product_type": "花束",
+      "sample_unit_price": 59.9,
+      "series": "清新系列",
+      "business_tags": [
+        "长尾款"
+      ],
+      "listed_at": "2026-09-15",
+      "name": "【团团圆满】9朵白乒乓菊花束清新系列生日礼物生日花束同城鲜花上门",
+      "variant": "9朵白乒乓菊·花束",
+      "aliases": [
+        "9朵白乒乓菊花束",
+        "团团圆满",
+        "清新系列",
+        "白乒乓菊",
+        "白乒乓菊花束"
+      ],
+      "occasion_keywords": [
+        "生日礼物",
+        "生日花束",
+        "同城鲜花上门"
+      ]
+    },
+    {
+      "sku_id": "FLR-LISIANTHUS-19-BUCKET",
+      "short_name": "春野轻语",
+      "stem_count": 19,
+      "variety": "粉洋桔梗",
+      "product_type": "抱抱桶",
+      "sample_unit_price": 89.9,
+      "series": "洋桔梗系列",
+      "business_tags": [
+        "新品"
+      ],
+      "listed_at": "2026-10-24",
+      "name": "【春野轻语】19朵粉洋桔梗抱抱桶洋桔梗系列生日礼物生日花束同城鲜花上门",
+      "variant": "19朵粉洋桔梗·抱抱桶",
+      "aliases": [
+        "19朵粉洋桔梗抱抱桶",
+        "春野轻语",
+        "洋桔梗",
+        "洋桔梗系列",
+        "粉洋桔梗",
+        "粉洋桔梗抱抱桶"
+      ],
+      "occasion_keywords": [
+        "生日礼物",
+        "生日花束",
+        "同城鲜花上门"
+      ]
+    },
+    {
+      "sku_id": "FLR-CARNATION-11-BOUQUET",
+      "short_name": "念念温柔",
+      "stem_count": 11,
+      "variety": "粉康乃馨",
+      "product_type": "花束",
+      "sample_unit_price": 49.9,
+      "series": "感恩系列",
+      "business_tags": [
+        "长尾款"
+      ],
+      "listed_at": "2026-09-15",
+      "name": "【念念温柔】11朵粉康乃馨花束感恩系列生日礼物生日花束同城鲜花上门",
+      "variant": "11朵粉康乃馨·花束",
+      "aliases": [
+        "11朵粉康乃馨花束",
+        "念念温柔",
+        "感恩系列",
+        "粉康乃馨",
+        "粉康乃馨花束"
+      ],
+      "occasion_keywords": [
+        "生日礼物",
+        "生日花束",
+        "同城鲜花上门"
+      ]
+    }
+  ]
+}

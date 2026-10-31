@@ -1,0 +1,13 @@
+# 默认只映射到主机 loopback；真正公网部署前，再配置 HTTPS 反向代理。
+services:
+  investigation:
+    build: .
+    ports:
+      - "127.0.0.1:8080:8080"
+    environment:
+      ECOMMERCE_WEB_TOKEN: ${ECOMMERCE_WEB_TOKEN:?请先设置至少24字符的访问口令}
+    volumes:
+      - investigation-data:/state
+    restart: unless-stopped
+volumes:
+  investigation-data:

@@ -1,0 +1,67 @@
+{
+  "schema": "flower-quality-cases-v1",
+  "today": "2026-10-29",
+  "store_id": "hx-cq-na",
+  "description": "独立问法用于向量候选消融；不作为意图索引例句。小样本工程验证，不是业务准确率估计。",
+  "cases": [
+    {
+      "id": "holdout-supply",
+      "question": "炽热爱意10月25日是否出现供不上的情况",
+      "status": "ready",
+      "expect": {
+        "intent": "query_inventory",
+        "target_date": "2026-10-25"
+      }
+    },
+    {
+      "id": "holdout-sales",
+      "question": "炽热爱意10月25日成交通报给我看下",
+      "status": "ready",
+      "expect": {
+        "intent": "query_sales_performance",
+        "target_date": "2026-10-25"
+      }
+    },
+    {
+      "id": "holdout-discount",
+      "question": "炽热爱意10月25日是不是还在打折",
+      "status": "ready",
+      "expect": {
+        "intent": "query_promotions",
+        "target_date": "2026-10-25"
+      }
+    },
+    {
+      "id": "holdout-decline",
+      "question": "炽热爱意10月25日出单不如从前帮忙找找症结",
+      "status": "ready",
+      "expect": {
+        "intent": "investigate_sales_change",
+        "target_date": "2026-10-25"
+      }
+    },
+    {
+      "id": "holdout-rule",
+      "question": "99红玫10月25日缺货多久",
+      "status": "ready",
+      "expect": {
+        "intent": "query_inventory"
+      }
+    },
+    {
+      "id": "holdout-write",
+      "question": "炽热爱意10月25日成交通报给我看下并改价",
+      "status": "unsupported"
+    },
+    {
+      "id": "holdout-missing-date",
+      "question": "炽热爱意是不是还在打折",
+      "status": "needs_clarification"
+    },
+    {
+      "id": "holdout-missing-product",
+      "question": "10月25日那款花是否供不上",
+      "status": "needs_clarification"
+    }
+  ]
+}

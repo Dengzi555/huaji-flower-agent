@@ -1,0 +1,21 @@
+{
+  "schema": "claw-recording-v1",
+  "upstream": {
+    "repository": "https://github.com/claw-eval/claw-eval",
+    "commit": "5680b8b11ff2ee5dd2b07b89086a29a5c5c984d7"
+  },
+  "source_report_sha256": "18da8fa953e3f14da393ff8a070d86a9bced31165c54b51b360ef7ee004f22b2",
+  "dataset_sha256": "fixture-dataset",
+  "source_sha256": "fixture-source",
+  "case_count": 1,
+  "trials": 3,
+  "security_gate_passed": true,
+  "recorded_at": "2026-10-31T06:16:01.611885+00:00",
+  "files": [
+    "tasks.json",
+    "claw-summary.json",
+    "replay-case-0.jsonl",
+    "replay-case-1.jsonl",
+    "replay-case-2.jsonl"
+  ]
+}

@@ -1,0 +1,188 @@
+{
+  "repository": "https://github.com/claw-eval/claw-eval",
+  "upstream_commit": "5680b8b11ff2ee5dd2b07b89086a29a5c5c984d7",
+  "acquisition": "official-source-snapshot-not-git-clone",
+  "files": [
+    {
+      "path": "LICENSE",
+      "git_blob_sha": "08bf9a66b7f19d2aca616cabc035393570595881"
+    },
+    {
+      "path": "README.md",
+      "git_blob_sha": "8459464d5fad90ce8f59b71175f7b061b0122ab2"
+    },
+    {
+      "path": "config_general.yaml",
+      "git_blob_sha": "55407ed1a33d3edacb2ce700850737397636cfdf"
+    },
+    {
+      "path": "pyproject.toml",
+      "git_blob_sha": "5c0ffc8724e9c0d430b4c706f7d2e2f8517da6ab"
+    },
+    {
+      "path": "src/claw_eval/__init__.py",
+      "git_blob_sha": "3a1bf11ad662aa89575409a1e4772f0d71961db5"
+    },
+    {
+      "path": "src/claw_eval/cli.py",
+      "git_blob_sha": "50670b89b644e8835c2073d8b425926282d22078"
+    },
+    {
+      "path": "src/claw_eval/config.py",
+      "git_blob_sha": "a529960a17c60c1be5bef23504925f4867726091"
+    },
+    {
+      "path": "src/claw_eval/graders/__init__.py",
+      "git_blob_sha": "6d5f2817c317a3d6eae4b67844796d6e7441e496"
+    },
+    {
+      "path": "src/claw_eval/graders/base.py",
+      "git_blob_sha": "21b375971bb9d8e72712914ef7bbe6816b2b22f6"
+    },
+    {
+      "path": "src/claw_eval/graders/image_qa_oracle.py",
+      "git_blob_sha": "212d6a132f531ca4230a7716beec8710bbc637d1"
+    },
+    {
+      "path": "src/claw_eval/graders/llm_judge.py",
+      "git_blob_sha": "3d217276ab610436af8b838db28cfbce80ee9984"
+    },
+    {
+      "path": "src/claw_eval/graders/multimodal_common.py",
+      "git_blob_sha": "26b61352014fc178439f9967a460c423a67f14c9"
+    },
+    {
+      "path": "src/claw_eval/graders/officeqa_reward.py",
+      "git_blob_sha": "5f7c258fb5ba2a42fc7afb230e558058d5d8d107"
+    },
+    {
+      "path": "src/claw_eval/graders/pinbench_common.py",
+      "git_blob_sha": "c3e1558988dd2c4bdf701132dcf979f3cda73011"
+    },
+    {
+      "path": "src/claw_eval/graders/registry.py",
+      "git_blob_sha": "55cc22100589e52dc83affb55bdca8473e28613b"
+    },
+    {
+      "path": "src/claw_eval/graders/user_agent_clarify_base.py",
+      "git_blob_sha": "d31ae79bd9baed360d93109efafd9dc5a9e027f3"
+    },
+    {
+      "path": "src/claw_eval/graders/visual_grader.py",
+      "git_blob_sha": "53a6c9a510ed7cba5f775baa43227faebfca6dd9"
+    },
+    {
+      "path": "src/claw_eval/graders/webpage_grader.py",
+      "git_blob_sha": "09e5922573926971140077fd90d8f3069c0d4fc4"
+    },
+    {
+      "path": "src/claw_eval/models/__init__.py",
+      "git_blob_sha": "d33d1240ba5fb7249aca0e37e1babafb563017b4"
+    },
+    {
+      "path": "src/claw_eval/models/content.py",
+      "git_blob_sha": "7ece18a862c34ff450f7b5683e8e01b236f1dc51"
+    },
+    {
+      "path": "src/claw_eval/models/message.py",
+      "git_blob_sha": "d9ca2bba326c1d9cdafd679005d7addfed73ef0d"
+    },
+    {
+      "path": "src/claw_eval/models/scoring.py",
+      "git_blob_sha": "acd1f0e07cbb244ad5901166b2175ce390610da9"
+    },
+    {
+      "path": "src/claw_eval/models/task.py",
+      "git_blob_sha": "0c94747511599923566036e8b2b069cfdc26bfeb"
+    },
+    {
+      "path": "src/claw_eval/models/tool.py",
+      "git_blob_sha": "ab22f095be9da7109fb82b71cbce6c08586e6f1e"
+    },
+    {
+      "path": "src/claw_eval/models/trace.py",
+      "git_blob_sha": "96574417768183d8b141d25edb1cc260578f1f9c"
+    },
+    {
+      "path": "src/claw_eval/runner/__init__.py",
+      "git_blob_sha": "eafc71a4b1501e2ef1fd910163f63247b6f8f2a4"
+    },
+    {
+      "path": "src/claw_eval/runner/agent_tools.py",
+      "git_blob_sha": "2cc4a8f9d6a99a738dc62c8f09e883d39c91c15e"
+    },
+    {
+      "path": "src/claw_eval/runner/compact.py",
+      "git_blob_sha": "70a5673cbba6901234c7b040d0a9457480ea4759"
+    },
+    {
+      "path": "src/claw_eval/runner/dispatcher.py",
+      "git_blob_sha": "c39038221b4791d71eff0f5edf546db39d4075bb"
+    },
+    {
+      "path": "src/claw_eval/runner/loop.py",
+      "git_blob_sha": "88b4c17ad17172be3301a3ca5aa90d0aeb3ba3be"
+    },
+    {
+      "path": "src/claw_eval/runner/media_loader.py",
+      "git_blob_sha": "aee1faf82907c5820f08354fa43d60318f9fed60"
+    },
+    {
+      "path": "src/claw_eval/runner/providers/__init__.py",
+      "git_blob_sha": "2f288c9fe06da656c23706c4abe2b4a60d22e72f"
+    },
+    {
+      "path": "src/claw_eval/runner/providers/openai_compat.py",
+      "git_blob_sha": "eafe2bea3763d1a9cfdb0da5cd7e1bbf58a75af3"
+    },
+    {
+      "path": "src/claw_eval/runner/sandbox_dispatcher.py",
+      "git_blob_sha": "97b69d92e3cb12251994ec8bcce039709d48d14e"
+    },
+    {
+      "path": "src/claw_eval/runner/sandbox_runner.py",
+      "git_blob_sha": "a1371d6bb2467419caa8b0352910512d62dee311"
+    },
+    {
+      "path": "src/claw_eval/runner/sandbox_tools.py",
+      "git_blob_sha": "780c2799d4dc326630fc39f98d5fbc5c5022c04c"
+    },
+    {
+      "path": "src/claw_eval/runner/services.py",
+      "git_blob_sha": "042a2d45fe6d828e76ff37fc956b1fea99549544"
+    },
+    {
+      "path": "src/claw_eval/runner/system_prompt.py",
+      "git_blob_sha": "bf99b817aed8ce7edde5178dcda7a9b9167615c8"
+    },
+    {
+      "path": "src/claw_eval/runner/todo.py",
+      "git_blob_sha": "c019f13d1d5331e79495311facc8d9dac6a48e46"
+    },
+    {
+      "path": "src/claw_eval/runner/user_agent.py",
+      "git_blob_sha": "020d67799aaeeea157a3d1f4c65c9e825b0c59e9"
+    },
+    {
+      "path": "src/claw_eval/sandbox/__init__.py",
+      "git_blob_sha": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391"
+    },
+    {
+      "path": "src/claw_eval/sandbox/server.py",
+      "git_blob_sha": "7b244867815c7753448f986a4243958ed42c3d99"
+    },
+    {
+      "path": "src/claw_eval/trace/__init__.py",
+      "git_blob_sha": "c680b7585f860af2fc305eaaa12904276a6e0d6a"
+    },
+    {
+      "path": "src/claw_eval/trace/reader.py",
+      "git_blob_sha": "f7a18fd222f51518d671082589413a02a70426a8"
+    },
+    {
+      "path": "src/claw_eval/trace/writer.py",
+      "git_blob_sha": "b864223391101881985e70e714f3d9fa040e4ac4"
+    }
+  ],
+  "errors": []
+}

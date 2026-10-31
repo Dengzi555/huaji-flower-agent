@@ -1,0 +1,54 @@
+[
+  {
+    "task_id": "replay-case",
+    "task_name": "花迹业务回归 replay-case",
+    "version": "1.0",
+    "category": "flower_operations",
+    "difficulty": "simple",
+    "prompt": {
+      "text": "回放样例：2026-10-29 的日期确认",
+      "language": "zh",
+      "attachments": []
+    },
+    "tools": [],
+    "tool_endpoints": [],
+    "environment": {
+      "timeout_seconds": 300,
+      "max_turns": 20,
+      "mock_today": "2026-10-29",
+      "fixtures": [],
+      "env_snapshot_timeout": 10,
+      "enable_todo": false,
+      "todo_nag_rounds": 3,
+      "enable_compact": false,
+      "compact_keep_recent": 20,
+      "compact_min_chars": 500,
+      "compact_threshold_pct": 0.7,
+      "compact_keep_recent_on_summary": 4,
+      "compact_protect_tokens": 40000,
+      "compact_max_auto_compacts": 2
+    },
+    "scoring_components": [],
+    "safety_checks": [],
+    "services": [],
+    "expected_actions": [],
+    "judge_rubric": "核对冻结日期、商品范围、工具权限和计算产物；缺失不补零，不能编造完成。",
+    "reference_solution": "",
+    "primary_dimensions": [],
+    "tags": [
+      "custom-flower-suite",
+      "deterministic_workflow"
+    ],
+    "user_agent": {
+      "enabled": false,
+      "persona": "",
+      "max_rounds": 3,
+      "system_prompt_suffix": ""
+    },
+    "sandbox_files": [],
+    "sandbox_grader_files": [],
+    "env_snapshot_files": [],
+    "env_snapshot_commands": [],
+    "local_grader_files": []
+  }
+]

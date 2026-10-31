@@ -1,0 +1,53 @@
+__pycache__/
+*.pyc
+.pytest_cache/
+.mypy_cache/
+.tmptest/
+Thumbs.db
+.DS_Store
+
+# 运行产物：报告、证据、SQLite 状态、评测轨迹。体积大且可重放，不入库。
+runs/
+requests/
+web-data/
+artifacts/
+.tools/
+.runtime/
+data/annual/
+
+# 本地配置与密钥
+config.local.json
+.env
+.env.tmp
+.env.*
+!.env.example
+!.env.web.example
+config.local.json.tmp
+*.local.json
+*.sqlite
+*.sqlite3
+*.sqlite3-*
+*.db
+*.db-*
+*.pem
+*.key
+*.p12
+*.pfx
+
+# 个人材料（面试稿等），不随开源仓库发布
+notes/
+*.docx
+*.bak
+*.tmp
+~$*
+.workbuddy/
+scripts/append_interview_*.py
+.venv/
+venv/
+.coverage
+htmlcov/
+# 本地 npm 缓存（npx 调试残留）
+.npm-cache/
+
+# 本地工具缓存
+rtk/

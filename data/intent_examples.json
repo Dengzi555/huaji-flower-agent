@@ -1,0 +1,406 @@
+{
+  "schema": "flower-intent-examples-v1",
+  "purpose": "人工维护的路由示例，只作候选提示，不提供经营事实；评测集须独立维护。",
+  "examples": [
+    {
+      "id": "query_sales_performance-01",
+      "intent": "query_sales_performance",
+      "text": "昨天哪款花最受欢迎"
+    },
+    {
+      "id": "query_sales_performance-02",
+      "intent": "query_sales_performance",
+      "text": "帮我看看红玫瑰上个月的成交表现"
+    },
+    {
+      "id": "query_sales_performance-03",
+      "intent": "query_sales_performance",
+      "text": "最近七天全店谁是销售冠军"
+    },
+    {
+      "id": "query_sales_performance-04",
+      "intent": "query_sales_performance",
+      "text": "这周向日葵一共出了几束"
+    },
+    {
+      "id": "query_sales_performance-05",
+      "intent": "query_sales_performance",
+      "text": "教师节哪些花材卖得比较好"
+    },
+    {
+      "id": "query_sales_performance-06",
+      "intent": "query_sales_performance",
+      "text": "昨日有哪几款一单没出"
+    },
+    {
+      "id": "query_sales_performance-07",
+      "intent": "query_sales_performance",
+      "text": "本月花束和抱抱桶哪个更畅销"
+    },
+    {
+      "id": "query_sales_performance-08",
+      "intent": "query_sales_performance",
+      "text": "炽热爱意昨天卖出去几件"
+    },
+    {
+      "id": "query_sales_performance-09",
+      "intent": "query_sales_performance",
+      "text": "上周哪个系列最受客户欢迎"
+    },
+    {
+      "id": "query_sales_performance-10",
+      "intent": "query_sales_performance",
+      "text": "上个月全店红玫瑰合计卖了几单"
+    },
+    {
+      "id": "query_sales_performance-11",
+      "intent": "query_sales_performance",
+      "text": "10月25日花材冠军是谁"
+    },
+    {
+      "id": "query_sales_performance-12",
+      "intent": "query_sales_performance",
+      "text": "这三天出单最多的商品是哪款"
+    },
+    {
+      "id": "query_sales_performance-13",
+      "intent": "query_sales_performance",
+      "text": "昨天卖得最多和最少的分别是什么"
+    },
+    {
+      "id": "query_sales_performance-14",
+      "intent": "query_sales_performance",
+      "text": "帮我汇总昨天每款商品的支付件数"
+    },
+    {
+      "id": "query_sales_performance-15",
+      "intent": "query_sales_performance",
+      "text": "昨天新品的销售成绩怎样"
+    },
+    {
+      "id": "query_sales_performance-16",
+      "intent": "query_sales_performance",
+      "text": "这周乌梅系列有多少成交"
+    },
+    {
+      "id": "query_sales_performance-17",
+      "intent": "query_sales_performance",
+      "text": "最近五天哪几款一直没有销量"
+    },
+    {
+      "id": "query_sales_performance-18",
+      "intent": "query_sales_performance",
+      "text": "上周五到周日的畅销款有哪些"
+    },
+    {
+      "id": "query_sales_performance-19",
+      "intent": "query_sales_performance",
+      "text": "母亲节康乃馨哪种规格销量领先"
+    },
+    {
+      "id": "query_sales_performance-20",
+      "intent": "query_sales_performance",
+      "text": "上个月每天卖了多少画个曲线"
+    },
+    {
+      "id": "investigate_sales_change-01",
+      "intent": "investigate_sales_change",
+      "text": "红玫瑰怎么突然卖不动了"
+    },
+    {
+      "id": "investigate_sales_change-02",
+      "intent": "investigate_sales_change",
+      "text": "炽热爱意这几天不如以前了帮我排查"
+    },
+    {
+      "id": "investigate_sales_change-03",
+      "intent": "investigate_sales_change",
+      "text": "为什么昨天的成交件数掉下来了"
+    },
+    {
+      "id": "investigate_sales_change-04",
+      "intent": "investigate_sales_change",
+      "text": "99朵爆款从热卖变成滞销是什么情况"
+    },
+    {
+      "id": "investigate_sales_change-05",
+      "intent": "investigate_sales_change",
+      "text": "向日葵这周比上周少卖很多为什么"
+    },
+    {
+      "id": "investigate_sales_change-06",
+      "intent": "investigate_sales_change",
+      "text": "活动结束后销量回落是否正常"
+    },
+    {
+      "id": "investigate_sales_change-07",
+      "intent": "investigate_sales_change",
+      "text": "乌梅抱抱桶订单变少可能是哪环节出了问题"
+    },
+    {
+      "id": "investigate_sales_change-08",
+      "intent": "investigate_sales_change",
+      "text": "新品上线后迟迟不开单帮我分析"
+    },
+    {
+      "id": "investigate_sales_change-09",
+      "intent": "investigate_sales_change",
+      "text": "红玫瑰下滑是进店少了还是转化差了"
+    },
+    {
+      "id": "investigate_sales_change-10",
+      "intent": "investigate_sales_change",
+      "text": "昨天少卖的主要线索有哪些"
+    },
+    {
+      "id": "investigate_sales_change-11",
+      "intent": "investigate_sales_change",
+      "text": "请调查全店热销款销量减少的原因"
+    },
+    {
+      "id": "investigate_sales_change-12",
+      "intent": "investigate_sales_change",
+      "text": "对照上周同一天排查红玫瑰走弱"
+    },
+    {
+      "id": "investigate_sales_change-13",
+      "intent": "investigate_sales_change",
+      "text": "库存紧张会不会拖累了昨天的销量"
+    },
+    {
+      "id": "investigate_sales_change-14",
+      "intent": "investigate_sales_change",
+      "text": "推广停掉后少卖了多少需要关注吗"
+    },
+    {
+      "id": "investigate_sales_change-15",
+      "intent": "investigate_sales_change",
+      "text": "客户取消变多是否影响成交表现"
+    },
+    {
+      "id": "investigate_sales_change-16",
+      "intent": "investigate_sales_change",
+      "text": "最近七天爆款的变化值得担心吗"
+    },
+    {
+      "id": "investigate_sales_change-17",
+      "intent": "investigate_sales_change",
+      "text": "帮我找出昨天销量波动的证据"
+    },
+    {
+      "id": "investigate_sales_change-18",
+      "intent": "investigate_sales_change",
+      "text": "流量变化与销量回落是否同时发生"
+    },
+    {
+      "id": "investigate_sales_change-19",
+      "intent": "investigate_sales_change",
+      "text": "昨天付了款又取消的订单对销售有何影响"
+    },
+    {
+      "id": "investigate_sales_change-20",
+      "intent": "investigate_sales_change",
+      "text": "这款花从每天几十单变成几单问题在哪里"
+    },
+    {
+      "id": "query_inventory-01",
+      "intent": "query_inventory",
+      "text": "99红玫昨天断供了多久"
+    },
+    {
+      "id": "query_inventory-02",
+      "intent": "query_inventory",
+      "text": "炽热爱意10月25日还能接单吗"
+    },
+    {
+      "id": "query_inventory-03",
+      "intent": "query_inventory",
+      "text": "乌梅抱抱桶昨天可售时长有多少"
+    },
+    {
+      "id": "query_inventory-04",
+      "intent": "query_inventory",
+      "text": "上周向日葵有没有售罄的时段"
+    },
+    {
+      "id": "query_inventory-05",
+      "intent": "query_inventory",
+      "text": "昨天红玫瑰有几小时买不到"
+    },
+    {
+      "id": "query_inventory-06",
+      "intent": "query_inventory",
+      "text": "查一下这款花昨日的存货情况"
+    },
+    {
+      "id": "query_inventory-07",
+      "intent": "query_inventory",
+      "text": "新品昨天是否一直有货"
+    },
+    {
+      "id": "query_inventory-08",
+      "intent": "query_inventory",
+      "text": "红玫瑰昨天缺货多长时间"
+    },
+    {
+      "id": "query_inventory-09",
+      "intent": "query_inventory",
+      "text": "99朵款在10月25日供货是否正常"
+    },
+    {
+      "id": "query_inventory-10",
+      "intent": "query_inventory",
+      "text": "乌梅昨天可卖的库存还有多少"
+    },
+    {
+      "id": "query_inventory-11",
+      "intent": "query_inventory",
+      "text": "昨日洋桔梗有没有断档"
+    },
+    {
+      "id": "query_inventory-12",
+      "intent": "query_inventory",
+      "text": "帮我查炽热爱意昨日售罄记录"
+    },
+    {
+      "id": "query_inventory-13",
+      "intent": "query_inventory",
+      "text": "10月25日炽热爱意断供情况"
+    },
+    {
+      "id": "query_inventory-14",
+      "intent": "query_inventory",
+      "text": "昨天哪几个时段这束花无法购买"
+    },
+    {
+      "id": "query_inventory-15",
+      "intent": "query_inventory",
+      "text": "昨天向日葵供应充足吗"
+    },
+    {
+      "id": "query_inventory-16",
+      "intent": "query_inventory",
+      "text": "上周五这款花是否出现无货状态"
+    },
+    {
+      "id": "query_inventory-17",
+      "intent": "query_inventory",
+      "text": "查询99红玫昨天的缺货记录"
+    },
+    {
+      "id": "query_inventory-18",
+      "intent": "query_inventory",
+      "text": "昨天这款抱抱桶还有可售库存吗"
+    },
+    {
+      "id": "query_inventory-19",
+      "intent": "query_inventory",
+      "text": "10月25日的商品可售状态是什么"
+    },
+    {
+      "id": "query_inventory-20",
+      "intent": "query_inventory",
+      "text": "帮我看看昨天库存是否为零"
+    },
+    {
+      "id": "query_promotions-01",
+      "intent": "query_promotions",
+      "text": "炽热爱意昨天参加了什么促销"
+    },
+    {
+      "id": "query_promotions-02",
+      "intent": "query_promotions",
+      "text": "红玫瑰上周五有没有优惠"
+    },
+    {
+      "id": "query_promotions-03",
+      "intent": "query_promotions",
+      "text": "查一下99朵花束昨日的活动记录"
+    },
+    {
+      "id": "query_promotions-04",
+      "intent": "query_promotions",
+      "text": "昨天乌梅参与了满减吗"
+    },
+    {
+      "id": "query_promotions-05",
+      "intent": "query_promotions",
+      "text": "这款花昨日有没有折扣"
+    },
+    {
+      "id": "query_promotions-06",
+      "intent": "query_promotions",
+      "text": "昨日洋桔梗是否在做促销"
+    },
+    {
+      "id": "query_promotions-07",
+      "intent": "query_promotions",
+      "text": "向日葵教师节当天有什么活动"
+    },
+    {
+      "id": "query_promotions-08",
+      "intent": "query_promotions",
+      "text": "上周这个系列有没有优惠活动"
+    },
+    {
+      "id": "query_promotions-09",
+      "intent": "query_promotions",
+      "text": "10月25日炽热爱意促销是否还在进行"
+    },
+    {
+      "id": "query_promotions-10",
+      "intent": "query_promotions",
+      "text": "红玫瑰昨天活动结束了没有"
+    },
+    {
+      "id": "query_promotions-11",
+      "intent": "query_promotions",
+      "text": "昨天哪项促销覆盖了这款商品"
+    },
+    {
+      "id": "query_promotions-12",
+      "intent": "query_promotions",
+      "text": "查询昨天花束的促销状态"
+    },
+    {
+      "id": "query_promotions-13",
+      "intent": "query_promotions",
+      "text": "上周五乌梅有没有参加活动"
+    },
+    {
+      "id": "query_promotions-14",
+      "intent": "query_promotions",
+      "text": "这款新品昨日是不是活动商品"
+    },
+    {
+      "id": "query_promotions-15",
+      "intent": "query_promotions",
+      "text": "99红玫10月25日有哪些优惠记录"
+    },
+    {
+      "id": "query_promotions-16",
+      "intent": "query_promotions",
+      "text": "帮我确认昨日的折扣活动是否结束"
+    },
+    {
+      "id": "query_promotions-17",
+      "intent": "query_promotions",
+      "text": "昨天抱抱桶参加的活动叫什么"
+    },
+    {
+      "id": "query_promotions-18",
+      "intent": "query_promotions",
+      "text": "查一下炽热爱意昨日活动起止情况"
+    },
+    {
+      "id": "query_promotions-19",
+      "intent": "query_promotions",
+      "text": "10月25日这束花还有促销吗"
+    },
+    {
+      "id": "query_promotions-20",
+      "intent": "query_promotions",
+      "text": "昨日这款花是否有营销优惠"
+    }
+  ]
+}

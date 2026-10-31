@@ -1,0 +1,8 @@
+{
+  "today":"2026-10-29","store_id":"hx-cq-na",
+  "cases":[
+    {"id":"live-category-champion","question":"10月25日全店花材冠军是谁","status":"ready","expect":{"intent":"query_sales_performance","query_plan.ranking.group_by":"variety"}},
+    {"id":"live-stock-paraphrase","question":"10月25日炽热爱意断供情况","status":"ready","expect":{"intent":"query_inventory","sku_id":"FLR-ROSE-99-BOUQUET"}},
+    {"id":"live-rule-control","question":"99红玫10月25日缺货多久","status":"ready","expect":{"intent":"query_inventory"}}
+  ]
+}

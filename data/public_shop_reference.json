@@ -1,0 +1,13 @@
+{
+  "source": "用户提供的美团公开店铺页面",
+  "url": "https://cactivityapi-sc.waimai.meituan.com/h5/sub-trade/restaurant/restaurant?poi_id_str=5HisHZPiwfIb97u1EA1PuAI&poi_id=-100&source=searchresult&channel=default",
+  "observed_on": "2026-10-26",
+  "observed_fields": {
+    "browser_tab_title": "花仙女鲜花店（玫瑰花.开业花篮.生日鲜花）",
+    "brand": "花仙女"
+  },
+  "product_list_observed": false,
+  "private_business_metrics_observed": false,
+  "access_result": "网页读取工具不可访问；浏览器内容读取超时；未导入未经核实的商品、价格或销量",
+  "notes": "仅使用已观察的店名修正品牌；现有经营、流量与推广数据仍为学习用合成快照。"
+}

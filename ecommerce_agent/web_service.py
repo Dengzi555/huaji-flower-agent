@@ -106,7 +106,7 @@ class InvestigationService:
                 "operating_settings":self.operations.settings(),
                 "mode": "hybrid_deepseek" if model_status['enabled'] and model_status['configured'] else "deterministic_workflow", "fingerprint": fingerprint,
                 "capabilities": {"model_enabled": bool(model_status['enabled'] and model_status['configured']), "write_actions": False,'cancellation':True,
-                                 "intents": ["investigate_sales_change", "query_sales_performance", "query_inventory", "query_promotions"]}}
+                                 "intents": ["investigate_sales_change", "query_sales_performance", "query_inventory", "query_promotions", "query_combined"]}}
 
     def create(self, payload, idempotency_key=None, *, _store=None, _catalog=None, _review=None, _today=None, _mission=None, _conversation=None):
         """直接API请求和会话请求共用准入账本，幂等命中保留原用量。"""
@@ -204,6 +204,11 @@ class InvestigationService:
             state = json.loads(saved_state) if saved_state else None
             if state:
                 state.pop("run_dir", None)
+                # 历史任务也使用新的阅读视图；不改写已保存的任务、证据和数据版本。
+                analysis=state.get('analysis') or {}
+                if analysis.get('kind')=='combined':
+                    from .combined_answer import build_answer
+                    analysis['business_answer']=build_answer(result['parsed'],analysis.get('sections',[]))
             result["result"] = state
             from .errors import AgentError
             problem=(state or {}).get('error_info') or result['parsed'].get('execution_error') or result['parsed'].get('error_info')

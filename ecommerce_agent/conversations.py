@@ -12,7 +12,7 @@ from .routing import ROUTES, route_question
 from .task_parser import parse_dates, shanghai_today
 from .time_scope import has_window
 from .scope_patch import product_patch
-from .query_plan import global_scope,ranking
+from .query_plan import global_scope,ranking,resolve_time_conditions
 from .store_comparison import start_comparison,comparison_view
 from .task_repository import ConflictError
 from .assistant_chat import local_reply,is_general_chat
@@ -30,7 +30,7 @@ class Conversations:
     """一个对话可引用多个门店；每次业务调用仍绑定单个门店的服务。"""
     def __init__(self, service, *, today=shanghai_today,default_query_scope=None):
         self.service=service;self.today=today;self.lock=threading.RLock();self.chat_responder=None;self.store_planner=None;self.query_planner=None
-        self.default_query_scope=default_query_scope or getattr(service,'default_query_scope','all')
+        self.default_query_scope=default_query_scope or getattr(service,'default_query_scope','current')
         if self.default_query_scope not in ('all','current'):raise ValueError('默认查询门店范围无效。')
         first=service.for_store() if hasattr(service,'for_store') else service
         self.path=first.database.parent/'conversations.sqlite3'
@@ -68,7 +68,7 @@ class Conversations:
         """空对话显式绑定初始门店，不自动读取上一窗口的上下文。"""
         self.active(sid)
         doc={'id':uuid.uuid4().hex,'revision':0,'focus_store':sid,'query_store_ids':[],
-            'stores':{},'turns':[],'waiting':[],'notice':'未指定门店时默认查询全部门店；可明确说“本店”或具体店名。' if self.default_query_scope=='all' else '请提出经营问题。'}
+            'stores':{},'turns':[],'waiting':[],'notice':'未指定门店时默认查询全部门店；可明确说“本店”或具体店名。' if self.default_query_scope=='all' else '未指定门店时查询当前选中店；也可以指定其他门店或全部门店。'}
         self.save(doc);return self.public(doc)
 
     def public(self,doc):
@@ -138,7 +138,8 @@ class Conversations:
 
     def _turn(self,cid,payload,key,on_delta=None):
         """确定指代→继承缺失条件→原解析器重新准入→创建本店任务；歧义不跑工具。"""
-        if not isinstance(payload,dict) or set(payload)-{'question','sku','date','intent','revision','store_id','store_choice','mode'}:raise ValueError('不支持的对话字段。')
+        if not isinstance(payload,dict) or set(payload)-{'question','sku','date','intent','revision','store_id','store_choice','store_scope','mode'}:raise ValueError('不支持的对话字段。')
+        if 'store_scope' in payload and payload['store_scope'] not in ('all','current'):raise ValueError('查询窗口范围无效。')
         question=payload.get('question','')
         if not isinstance(question,str) or not 1<=len(question.strip())<=2000:raise ValueError('问题需为1–2000字。')
         if not key or not re.fullmatch(r'[A-Za-z0-9_-]{1,100}',key):raise ValueError('需要合法的幂等键。')
@@ -157,9 +158,17 @@ class Conversations:
             if len(doc['turns'])>=100:raise ConflictError('当前对话已达100轮，请新建对话。')
             active_job=next((t['comparison'] for t in doc['turns'] if t.get('comparison') and t['comparison']['id']==doc.get('active_comparison')),None)
             store_resolution,effective_question,conditions=resolve_turn(self,doc,payload,active_job)
+            # 门店级推广无需商品SKU；在普通聊天判定前保留纯日期追问，但仍先校验门店。
+            if store_resolution['status']=='resolved':
+                from .advertising_query import reply as advertising_reply
+                advertising_result=advertising_reply(self,doc,payload,key,digest,store_resolution,business_text(effective_question,self.shops()),on_delta)
+                if advertising_result is not None:return advertising_result
             # 先区分普通交流，不能让“你好”继承上一SKU并要求补日期。
             service=self.active(doc['focus_store']);reply=local_reply(question)
             explicit=any(payload.get(field) for field in ('sku','date','intent'))
+            if not explicit and 'date' in doc.get('waiting',[]):
+                # 正在补时间时，“上个月”“10月20日至25日”是条件回复，继续原业务问题。
+                explicit=resolve_time_conditions(question,self.today())['status']=='resolved'
             if payload.get('mode') not in (None,'auto','model'):raise ValueError('不支持的对话模式')
             if not payload.get('store_choice') and (payload.get('mode')=='model' or reply is not None or not explicit and store_resolution['source'] in ('context','default_all') and is_general_chat(question,service.catalog,self.today(),bool(doc['stores']))):
                 return self.chat(doc,question,None if payload.get('mode')=='model' else reply,key,digest,on_delta)
@@ -281,7 +290,10 @@ class Conversations:
             doc.pop('pending_product_patch',None)
             doc.pop('active_comparison',None)
             doc['query_store_ids']=[sid]
-            doc.update(focus_store=sid,revision=doc['revision']+1,waiting=[] if preserve else [k for k in ('sku','date','intent') if not scope[k]],
+            # 规划器已区分真实缺失字段时直接使用；类别有多个候选并不等于缺少SKU。
+            missing=parsed.get('clarification',{}).get('missing_fields')
+            waiting=[{'product':'sku'}.get(k,k) for k in missing] if missing else [k for k in ('sku','date','intent') if not scope[k]]
+            doc.update(focus_store=sid,revision=doc['revision']+1,waiting=[] if preserve else waiting,
                 notice=((task.get('error_info') or parsed.get('error_info') or {}).get('title','本次要求不支持')+'；此前查询条件已保留。' if preserve else '沿用：'+('、'.join({'sku':'商品','date':'日期','intent':'查询事项'}[k] for k in inherited) if inherited else '无')+'；各店独立取证。'))
             entry={'question':turn_question,'store_id':sid,'scope':scope,'task_id':task['id'],'kind':'investigation','inherited':inherited,'store_resolution':store_resolution}
             doc['turns'].append(entry);self.record(doc,key,digest,entry);self.save(doc)
@@ -307,7 +319,7 @@ class Conversations:
                 try:
                     responder=self.chat_responder or settings.chat
                     # 只取同店成功对话；失败/停止的半句不能作为下一轮已确认回答。
-                    history=[turn for turn in doc['turns'] if turn.get('kind')=='chat'
+                    history=[turn for turn in doc['turns'] if turn.get('kind')=='chat' and turn.get('chat',{}).get('mode')!='advertising'
                         and turn.get('store_id')==doc['focus_store'] and not turn.get('chat',{}).get('error_info')][-12:]
                     checkpoint()
                     result=responder(question,history,on_delta=emit_delta) if on_delta and not self.chat_responder else responder(question,history)

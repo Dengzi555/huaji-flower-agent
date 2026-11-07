@@ -5,10 +5,11 @@ function renderSalesTrend(container,task){
   const make=(tag,className='',text='')=>{const el=document.createElement(tag);el.className=className;el.textContent=text;return el;};
   const section=make('section','sales-trend-section');
   section.append(make('p','trend-eyebrow','SALES / COMPARISON'),make('h2','',`${trend.display_label?trend.display_label+' · ':''}${trend.start_date} — ${trend.end_date} · 销量变化`),
-    make('p','trend-coverage',`可用 ${trend.coverage.available_days}/${trend.coverage.requested_days} 天 · 单位：成品束/桶 · 缺失和未上架为断点，零销量为0`));
+    make('p','trend-coverage',`${trend.coverage.available_days}/${trend.coverage.requested_days} 天有记录 · 单位：束/桶`));
   const cards=make('div','baseline-cards');
-  section.append(make('h3','trend-subtitle',`末日对比 · 目标日 ${trend.end_date}`));
-  for(const item of trend.comparisons){const card=make('article',`baseline-card${item.is_primary?' primary-baseline':''}`);
+  const comparisons=(trend.comparisons||[]).filter(item=>item.baseline_units!=null&&item.target_units!=null);
+  if(comparisons.length)section.append(make('h3','trend-subtitle',`末日对比 · ${trend.end_date}`));
+  for(const item of comparisons){const card=make('article',`baseline-card${item.is_primary?' primary-baseline':''}`);
     const change=item.relative_pct===null?item.zero_baseline?'基线为0，不计算降幅':'基线或目标数据不足':`${item.relative_pct>0?'+':''}${item.relative_pct}%`;
     card.append(make('span','',`${item.label} · ${item.date}${item.is_primary?' · 主基线':''}`),make('strong','',change),
       make('p','',`${item.baseline_units??'—'} → ${item.target_units??'—'} 束/桶`),make('small','',item.context_flags.join(' · ')||'暂无已知日历/活动差异'));
@@ -42,8 +43,9 @@ function renderSalesTrend(container,task){
       const i=dates.length===1?0:Math.max(0,Math.min(dates.length-1,Math.round((vx-left)/(right-left)*(dates.length-1)))),day=dates[i],record=byDate.get(day),cal=calendar.get(day);
       tip.replaceChildren(make('strong','',`${day} ${cal?.weekday_label||''}`),make('small','',cal?.label||'日历安排未知'));
       for(const [label,offset]of currentChoices){const v=value(day,offset),line=make('p');line.append(make('span','',`${label}${offset?' '+shift(day,-offset):''}`),make('b','',v===null?'缺失/未上架':`${v} 束/桶`));tip.append(line);}
-      tip.append(make('p','',`访客 ${record?.visitors??'—'} · 缺货 ${record?.stockout_minutes??'—'} 分钟`),
-        make('p','',record?.campaign_active===null||record?.campaign_active===undefined?'活动数据缺失':record.campaign_active?(record.campaign_name||'活动开启'):'未开启活动'));
+      if(record?.visitors!=null)tip.append(make('p','',`访客 ${record.visitors}`));
+      if(record?.stockout_minutes!=null)tip.append(make('p','',`缺货 ${record.stockout_minutes} 分钟`));
+      if(record?.campaign_active!=null)tip.append(make('p','',record.campaign_active?(record.campaign_name||'活动开启'):'未开启活动'));
       if(cal?.occasions.length)tip.append(make('p','',cal.occasions.join(' · ')));
       cross.setAttribute('x1',x(i));cross.setAttribute('x2',x(i));cross.setAttribute('visibility','visible');
       tip.hidden=false;tip.style.left=`${Math.max(0,Math.min(chart.clientWidth-260,event.clientX-chart.getBoundingClientRect().left+14))}px`;tip.style.top='12px';
@@ -51,11 +53,12 @@ function renderSalesTrend(container,task){
     svg.addEventListener('pointermove',update);svg.addEventListener('pointerdown',update);svg.addEventListener('pointerleave',()=>{tip.hidden=true;cross.setAttribute('visibility','hidden');});
   }
   for(const [label,offset,color]of choices){const item=make('label',`trend-choice ${color}`),input=document.createElement('input');input.type='checkbox';input.checked=selected.has(offset);input.addEventListener('change',()=>{input.checked?selected.add(offset):selected.delete(offset);draw();});item.append(input,document.createTextNode(label));controls.append(item);}
-  section.append(controls,chart,make('p','trend-legend','日期轴展示本期；对比线按前一日、前两日或上周同日对齐。金点为假期，绿点为调休工作日。'));
-  for(const note of task.result.analysis?.comparison_notes||[])section.append(make('p','trend-context-note',note));
+  section.append(controls,chart);
   const tableDetails=make('details','trend-daily-details');tableDetails.append(make('summary','','查看每日销量、日历与活动记录'));
   const table=make('table'),head=make('tr');for(const title of ['日期','日历','销量','访客','活动','数据状态'])head.append(make('th','',title));table.append(head);
   for(const day of dates){const r=byDate.get(day),cal=calendar.get(day),tr=make('tr');for(const v of [day,cal?.label||'年度安排未知',r?.units_sold??'—',r?.visitors??'—',r?.campaign_active===true?r.campaign_name:r?.campaign_active===false?'未开启':'缺失',r?.status||'缺失'])tr.append(make('td','',String(v)));table.append(tr);}
-  tableDetails.append(table);section.append(tableDetails,make('p','trend-source','日历：国务院办公厅2026年放假调休安排；营销节点单独标记。趋势与日历工具原始返回均保存在本轮证据中。'));
+  tableDetails.append(table,make('p','trend-legend','日期轴展示本期；对比线按前一日、前两日或上周同日对齐。金点为假期，绿点为调休工作日。'));
+  for(const note of task.result.analysis?.comparison_notes||[])tableDetails.append(make('p','trend-context-note',note));
+  tableDetails.append(make('p','trend-source','日历：国务院办公厅2026年放假调休安排；营销节点单独标记。趋势与日历工具原始返回均保存在本轮证据中。'));section.append(tableDetails);
   container.append(section);draw();
 }

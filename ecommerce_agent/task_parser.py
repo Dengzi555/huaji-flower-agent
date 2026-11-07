@@ -14,7 +14,7 @@ from .routing import ROUTES, route_question
 from .flower_language import normalize_flower_query
 from .time_scope import resolve_scope
 from .natural_dates import normalize_dates
-from .query_plan import ranking,global_scope,plan_from_model,sales_steps,grouping
+from .query_plan import ranking,global_scope,plan_from_model,sales_steps,grouping,resolve_time_conditions
 from .capabilities import question_boundaries,bind_contract,validate_plan,LIMITS
 from .query_context import QueryContext
 
@@ -258,24 +258,24 @@ def _parse_task(question,catalog,store,*,today=None,sku_override=None,date_overr
             observed.update({key:proposal[key] for key in ('usage','model') if key in proposal})
         return proposal
     try:
-        canonical,receipt=plan_from_model(question+(' '+date_override if date_override else ''),catalog,today,observed_planner,
+        context,receipt=plan_from_model(question+(' '+date_override if date_override else ''),catalog,today,observed_planner,
             default_intent=task.get('intent') if task.get('intent') in ROUTES else 'query_sales_performance',intent_candidates=retrieval,
             allow_default_all_products=default_product_scope=='all_if_omitted',query_context=query_context)
         task['understanding']={'path':'model_plan','planning_calls':1}
-        if not canonical:
+        if context is None:
             task['status']='needs_clarification'
             task['planning_attempt']=receipt
-            # 只追问尚未确定的内容，不抹掉规则已经识别的商品和日期。
-            if not task['issues']:
-                task['issues']=['商品范围和日期已识别；你希望重点了解销售表现，还是核查经营变化的原因？']
+            _clarify_plan(task,receipt,resolution)
             return task
         intent=receipt['parameters']['intent']
         # 明确人工选项不能被模型更换；多种意图也不能由规划器偷偷挑一个。
         if intent_override and intent!=intent_override:raise ValueError('模型改变了用户明确选择的事项。')
-        planned=_parse_rules_task(canonical,catalog,store,**{**options,'intent_override':intent})
-        planned['raw_question']=question
-        planned['routing']={**task['routing'],'status':'selected','intent':intent,'tier':'validated_plan',
+        routing={**task['routing'],'status':'selected','intent':intent,'tier':'validated_plan',
             'classification_status':task['routing']['status'],'reason':'规则未完整解析，统一模型计划经参数与能力校验后继续准入。'}
+        # 已校验的字段直接进入公共编译器，保留原话，不再生成问句或重新选路。
+        planned=_new_query_task(question,store,today,routing)
+        planned=_compile_query(planned,question,catalog,store,today,sku_override,context,
+            temporal=receipt['temporal'])
         planned['query_plan']['planning']=receipt
         planned['intent_retrieval']=retrieval
         planned['understanding']=task['understanding']
@@ -286,13 +286,8 @@ def _parse_task(question,catalog,store,*,today=None,sku_override=None,date_overr
         from .errors import AgentError,from_exception
         task['understanding']={'path':'model_plan','planning_calls':1}
         # 源问题确实缺少条件，仍向用户追问；模型/网络失败或篡改完整条件则属于服务错误。
-        normalized,_,date_errors=normalize_dates(question+(' '+date_override if date_override else ''),today)
-        source_time=resolve_scope(normalized,today,parse_dates)
-        if query_context:source_time=query_context.resolve_time(source_time,today)
-        genuinely_missing=bool(date_errors or source_time['errors'] or not resolution['candidates'] and not global_scope(question) and not sku_override)
-        if not isinstance(exc,AgentError) and genuinely_missing:
-            task.setdefault('query_plan',{})['planning']={'tier':'model','model_calls':1,'status':'clarification','error_type':type(exc).__name__,**observed}
-            return task
+        temporal=resolve_time_conditions(question+(' '+date_override if date_override else ''),today,query_context)
+        source_time=temporal['scope'];date_errors=temporal['errors']
         problem=from_exception(exc,phase='planning',fallback='plan_validation_failed').public()
         problem['data_queried']=False
         if '尚未开始查数' not in problem['message']:problem['message']+=' 本次尚未开始查数。'
@@ -308,9 +303,42 @@ def _parse_task(question,catalog,store,*,today=None,sku_override=None,date_overr
         return task
 
 
+def _clarify_plan(task,receipt,resolution):
+    """仅展示尚缺条件；保留独立识别的商品、时间，不把模型失败包装成信息缺失。"""
+    temporal=receipt['temporal'];scope=temporal['scope']
+    task.update({key:value for key,value in scope.items() if key!='errors'})
+    task['candidates']=resolution['candidates']
+    if len(resolution['candidates'])==1:task['sku_id']=resolution['candidates'][0]['sku_id']
+    missing=receipt['missing_fields']
+    prompts={'date':'你想查看哪段时间？例如上个月、近7天，或10月1日至15日。',
+             'product':'你想查看哪类花或哪款商品？',
+             'intent':'你希望了解销售表现，还是调查经营变化的原因？'}
+    task['issues']=[prompts[field] for field in missing]
+    if temporal['errors']:task['issues']=list(temporal['errors'])
+    task['clarification']={'kind':missing[0] if len(missing)==1 else 'conditions','missing_fields':missing,
+        'known_date':scope.get('target_date')}
+
+
+def _new_query_task(question,store,today,routing):
+    """规则和模型共享任务初始结构，路由已确定后只编译条件和验证能力。"""
+    task={"parser":"deterministic_rules_v1","raw_question":question,
+          "business_today":today.isoformat(),"timezone":"Asia/Shanghai",
+          "intent":routing['intent'],"routing":routing,"status":"needs_clarification",
+          "sku_id":None,"target_date":None,"comparison_date":None,
+          "comparison_policy":"previous_calendar_day","candidates":[],"issues":[],
+          "assumptions":["只调查一个 SKU 的单个自然日，与前一自然日比较。"],
+          "sample_data":store.meta['sample_data']}
+    if store.meta.get('business_context',{}).get('scenario')=='flash_flowers':
+        task['assumptions'].append('销量按成品束/桶计；标题朵数是单件花材规格，不是成交件数。')
+    if task['intent']=='query_sales_performance':
+        task['comparison_policy']='target_day_only'
+        task['assumptions'][0]='只查询目标日销售事实；不要求前一日基线，不计算降幅。'
+    return task
+
+
 def _parse_rules_task(question: str, catalog: ProductCatalog, store, *, today: date | None = None,
                sku_override: str | None = None, date_override: str | None = None,
-               intent_override: str | None = None, route_classifier=None, confirmed_candidates=None,query_planner=None,query_context=None) -> dict:
+               intent_override: str | None = None, route_classifier=None, confirmed_candidates=None,query_planner=None,query_context=None,routing_decision=None) -> dict:
     """生成任务卡：ready 才能交给 runner，其他状态只输出待确认或缺数据信息。
 
     --sku/--date 用来补全槽位；若它们和问题中的明确信息矛盾，拒绝覆盖。
@@ -319,25 +347,21 @@ def _parse_rules_task(question: str, catalog: ProductCatalog, store, *, today: d
     if not isinstance(question, str) or not 1 <= len(question.strip()) <= 2000:
         raise ValueError("问题必须包含 1–2000 个字符。")
     today = today or shanghai_today()
-    task = {"parser": "deterministic_rules_v1", "raw_question": question,
-            "business_today": today.isoformat(), "timezone": "Asia/Shanghai",
-            "intent": "investigate_sales_change", "status": "needs_clarification",
-            "sku_id": None, "target_date": None, "comparison_date": None,
-            "comparison_policy": "previous_calendar_day", "candidates": [], "issues": [],
-            "assumptions": ["只调查一个 SKU 的单个自然日，与前一自然日比较。"],
-            "sample_data": store.meta["sample_data"]}
-    if store.meta.get("business_context", {}).get("scenario") == "flash_flowers":
-        task["assumptions"].append("销量按成品束/桶计；标题朵数是单件花材规格，不是成交件数。")
-    routing = route_question(question, intent_override,classifier=route_classifier,confirmed_candidates=confirmed_candidates)
-    task["routing"] = routing
-    task["intent"] = routing["intent"]
-    if task["intent"] == "query_sales_performance":
-        task["comparison_policy"] = "target_day_only"
-        task["assumptions"][0] = "只查询目标日销售事实；不要求前一日基线，不计算降幅。"
+    routing = routing_decision or route_question(question, intent_override,classifier=route_classifier,confirmed_candidates=confirmed_candidates)
+    if routing.get('intent')=='query_combined' and routing.get('status')=='selected':
+        from .combined_query import parse_combined
+        return parse_combined(question,catalog,store,today=today,sku_override=sku_override,date_override=date_override,
+            query_context=query_context,routing=routing)
+    task=_new_query_task(question,store,today,routing)
     if routing["status"] != "selected":
         task["status"] = routing["status"]
         task["issues"].append(routing["reason"])
         return task
+    return _compile_query(task,question,catalog,store,today,sku_override,query_context,date_override=date_override)
+
+
+def _compile_query(task,question,catalog,store,today,sku_override,query_context,*,date_override=None,temporal=None):
+    """把结构化条件绑定成可执行任务；共享目录、时间、能力和数据覆盖检查。"""
     boundaries=question_boundaries(question,bool(ranking(question)))
     task['capability_boundaries']=boundaries
     if any(item['code']!='unsupported_ranking_metric' for item in boundaries):
@@ -392,12 +416,16 @@ def _parse_rules_task(question: str, catalog: ProductCatalog, store, *, today: d
     elif not candidates:
         task["issues"].append("未找到明确商品，请提供目录中的名称、别名或 --sku。")
 
-    normalized_question,date_notes,date_errors=normalize_dates(question,today)
+    if temporal is None:
+        normalized_question,date_notes,date_errors=normalize_dates(question,today)
+        scope=resolve_scope(normalized_question,today,parse_dates,date_override)
+        if query_context:scope=query_context.resolve_time(scope,today)
+    else:
+        normalized_question=temporal['normalized'];date_notes=temporal['notes'];date_errors=temporal['errors']
+        scope={**temporal['scope'],'errors':list(temporal['scope']['errors'])}
     task['normalized_question']=normalized_question
     task['date_resolution']=date_notes
     task['issues'].extend(date_errors)
-    scope=resolve_scope(normalized_question,today,parse_dates,date_override)
-    if query_context:scope=query_context.resolve_time(scope,today)
     task["issues"].extend(scope.pop("errors"))
     task.update(scope)
     task['query_plan']={'version':'sales-query-v1','tier':'rules','model_calls':0,'operation':'sales_summary',

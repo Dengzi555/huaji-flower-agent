@@ -15,6 +15,7 @@ ROUTES = {
     "investigate_sales_change": {"label": "销量变化调查", "required_table": "sales"},
     "query_inventory": {"label": "库存与缺货查询", "required_table": "inventory"},
     "query_promotions": {"label": "活动状态查询", "required_table": "promotions"},
+    "query_combined": {"label": "多事项经营查询", "required_table": "sales"},
 }
 
 # 写动作先于业务分流，退款、取消订单等也不能被“销量”关键词掩盖。
@@ -55,12 +56,13 @@ def route_question(question: str, intent_override: str | None = None, *, classif
         return finish()
     scoped=normalize_windows(scoped)
     count=re.search(WINDOW_PATTERN,scoped)
-    if re.search(r"同比|同期|最近(?!\s*\d)",scoped) or count and not 1<=int(count[1])<=60:
-        decision.update(status="unsupported",intent="unsupported_time_window",reason="当前支持1–60天明确窗口；同比、未明确天数的最近及整月查询暂不支持。")
+    if re.search(r"同比|同期",scoped) or count and not 1<=int(count[1])<=60:
+        decision.update(status="unsupported",intent="unsupported_time_window",reason="当前支持1–60天明确窗口；同比或同期查询尚未接入，超长窗口请缩小范围。")
         return finish()
     if re.search(r"天气|写诗|写代码|讲笑话",scoped):
         decision.update(status="unsupported",intent="unsupported_intent",reason="当前仅处理鲜花经营查询。")
         return finish()
+    scoped=re.sub(r'(?:不查|不看|不要(?:查|看)?|不用(?:查|看)?)(?:销量|销售件数|库存|缺货|活动|促销)(?:(?:和|、|以及)(?:销量|库存|缺货|活动|促销))*',' ',scoped)
     sales = bool(re.search(r"销量|销售件数|卖少|少卖|卖不动|卖得少|下降原因|下滑原因|[卖买][得的]怎么样|[卖买](?:了|出)?多少|销量趋势|销量走势", scoped) or ranking(scoped))
     orders_query=bool(re.search(r'取消率|取消情况|取消原因|取消分析|取消趋势|取消数|订单取消|完成订单|履约情况',scoped))
     sales = sales or orders_query
@@ -72,8 +74,9 @@ def route_question(question: str, intent_override: str | None = None, *, classif
     elif ranking(scoped) and not re.search(r'原因|为什么',scoped):sales_intent='query_sales_performance'
     inventory = bool(re.search(r"库存|缺货|断货|有货|可售", scoped))
     promotions = bool(re.search(r"活动|促销|优惠", scoped))
-    # 销量因果问题中提到库存/活动不自动变成三个任务；明确并列查询才需要选路。
-    independent = bool(re.search(r"顺便|同时|另外|以及|分别|再查|并查|还(?:想|要)?查|(?:销量|销售件数)和(?:库存|活动|促销)", scoped))
+    # 因果语境中的来源提及不自动拆分；只有明确独立事项才编译组合计划。
+    independent = bool(re.search(r"顺便|同时|另外|以及|分别|再查|并查|还(?:想|要)?查|(?:销量(?:变化|趋势|走势|情况|表现)?|销售件数|库存|缺货)\s*[、,，和及]\s*(?:库存|缺货|活动|促销)", scoped))
+    if sales and re.search(r'解释|导致|造成|引起',scoped) and not re.search(r'顺便|同时查|另外|分别|再查|并查|还(?:想|要)?查',scoped):independent=False
     candidates = []
     if sales:
         candidates.append(sales_intent)
@@ -125,6 +128,11 @@ def route_question(question: str, intent_override: str | None = None, *, classif
             decision.update(tier='model_fallback',intent=None,status='failed',candidates=[],error_info=problem,
                 reason=problem['message'])
         return finish()
+    if intent_override=='query_combined' and len(candidates)>1:
+        decision.update(status='selected',intent='query_combined',
+            operations=[{'query_sales_performance':'sales','investigate_sales_change':'sales','query_inventory':'inventory','query_promotions':'promotions'}[item] for item in candidates],
+            reason='明确多事项，按冻结的同一范围组合执行。')
+        return finish()
     if intent_override:
         if intent_override not in ROUTES or intent_override not in candidates:
             decision["reason"] = "所选意图与原问题候选不一致，请改写问题后重新提交。"
@@ -134,7 +142,9 @@ def route_question(question: str, intent_override: str | None = None, *, classif
     elif len(candidates) == 1:
         decision.update(status="selected", intent=candidates[0], reason="规则命中一个支持的只读意图。")
     elif candidates:
-        decision["reason"] = "问题包含多个独立查询，请选择本次先处理的一项；系统不会并行执行全部分支。"
+        decision.update(status='selected',intent='query_combined',
+            operations=[{'query_sales_performance':'sales','investigate_sales_change':'sales','query_inventory':'inventory','query_promotions':'promotions'}[item] for item in candidates],
+            reason='用户明确要求多个只读事项，冻结同一商品与日期范围后组合执行；独立取数有限并发，随后汇总证据。')
     else:
         decision.update(status="needs_clarification")
     return finish()

@@ -18,7 +18,7 @@ class HybridRoutingTests(unittest.TestCase):
     """检查是否真的调用分类器，以及是否有任何业务工具执行机会。"""
     def test_clear_ambiguous_and_guard_never_call_classifier(self):
         classifier=Mock(side_effect=AssertionError('不应调用模型'))
-        for text,status in [('99红玫昨天销量怎么样','selected'),('99红玫销量下降，顺便查库存','needs_clarification'),
+        for text,status in [('99红玫昨天销量怎么样','selected'),('99红玫销量下降，顺便查库存','selected'),
                             ('查库存然后退款','unsupported'),('最近300天这款走得如何','unsupported'),('天气怎么样','unsupported')]:
             result=route_question(text,classifier=classifier)
             self.assertEqual(result['status'],status);self.assertEqual(result['model_calls'],0)

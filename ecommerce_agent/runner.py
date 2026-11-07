@@ -18,6 +18,7 @@ from .operating_guidance import build_guidance,guidance_markdown
 from .capabilities import validate_plan
 from .cancellation import checkpoint,current_token,CancelledError,cancel_state,cancellable_call
 from .model_runtime import model_scope,current_ledger,prepare_messages
+from .model_deadlines import TIMEOUTS,INVESTIGATION_SECONDS,deadline_scope
 
 
 PROMPT = """You are 花迹, a Chinese-speaking flower-shop operations assistant and read-only ecommerce investigator. The SKU and two dates are fixed by the host.
@@ -78,14 +79,14 @@ def model_tool_view(observation):
         'omitted_rows':max(0,len(data.get('records',[]))-len(records)),'scope':'模型仅见最近14条明细和完整汇总/基线，完整曲线原始行保存在evidence.json；不能声称检查了省略明细。'}}}
 
 
-def run(store,sku_id,day,output,provider=None,max_steps=16,timeout_seconds=180,on_event=None,
+def run(store,sku_id,day,output,provider=None,max_steps=16,timeout_seconds=INVESTIGATION_SECONDS,on_event=None,
         task_context=None,adaptive=False,model_policy=None):
     """任务资源作用域：规划与后台调查各自记账，保留完整证据而非无限扩充模型历史。"""
     with model_scope(model_policy):
         return _run(store,sku_id,day,output,provider,max_steps,timeout_seconds,on_event,task_context,adaptive)
 
 
-def _run(store, sku_id, day, output, provider=None, max_steps=16, timeout_seconds=180, on_event=None,
+def _run(store, sku_id, day, output, provider=None, max_steps=16, timeout_seconds=INVESTIGATION_SECONDS, on_event=None,
         task_context=None, adaptive=False):
     """执行一个固定 SKU/日期的调查，返回最终 state，并将证据和报告保存在 output。
 
@@ -216,7 +217,7 @@ def _run(store, sku_id, day, output, provider=None, max_steps=16, timeout_second
                 checkpoint()
                 def invoke():
                     """自定义/测试客户端也不能绕过宿主预算；真实HTTP客户端在适配层统一管理。"""
-                    operation=lambda:provider.complete(messages,visible_tools,min(60,remaining))
+                    operation=lambda:provider.complete(messages,visible_tools,min(TIMEOUTS['execution'],remaining))
                     if getattr(provider,'supports_resource_management',False):return operation()
                     ledger=current_ledger()
                     selected,context=prepare_messages(messages,visible_tools,getattr(provider,'max_tokens',2048),ledger.policy)
@@ -224,7 +225,10 @@ def _run(store, sku_id, day, output, provider=None, max_steps=16, timeout_second
                     outcome='failed'
                     if hasattr(provider,'last_usage'):provider.last_usage=None
                     try:
-                        reply=cancellable_call(lambda:provider.complete(selected,visible_tools,min(60,remaining)))
+                        limit=min(TIMEOUTS['execution'],remaining)
+                        # 自定义客户端即使忽略timeout，也不能让宿主无限等候迟到结果。
+                        with deadline_scope(limit,'execution'):
+                            reply=cancellable_call(lambda:provider.complete(selected,visible_tools,limit))
                         outcome='completed';return reply
                     except CancelledError:outcome='cancelled';raise
                     finally:ledger.finish(record,getattr(provider,'last_usage',None),outcome)

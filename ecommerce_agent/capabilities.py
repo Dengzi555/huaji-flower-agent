@@ -6,6 +6,18 @@ from datetime import date
 CONTRACT_VERSION='flower-capabilities-v1'
 LIMITS={'max_steps':8,'max_days':60,'max_products':500,'max_rank_limit':10}
 CAPABILITIES={
+    'combined_read':{'intents':['query_combined'],'scopes':['single','group'],'requires':['frozen_product_and_time_scope'],
+        'produces':['独立事项结果','部分失败与数据缺口','销量曲线','原始工具证据'],
+        'tools':['get_product_group_sales','get_inventory_range','get_promotion_range'],'parameters':[],
+        'failure_policy':'最多三个独立工具并发；主线程统一汇总，失败不丢弃其他结果，取消后拒绝迟到结果'},
+    'advertising_advice':{'intents':['query_advertising'],'scopes':['store'],
+        'requires':['local_operating_settings'],'produces':['同店证据引用','本地关注线','只读配置建议'],
+        'tools':['get_advertising_settings'],'parameters':[],'entrypoint':'conversation',
+        'failure_policy':'不要求新日期；只沿用同店冻结证据；模型最多一次选择白名单建议，失败使用基础建议，不写平台配置'},
+    'advertising_summary':{'intents':['query_advertising'],'scopes':['store'],
+        'requires':['advertising_hourly_ledger'],'produces':['推广扣费','广告点击/CPC','费用率','小时关注项','缺失日期'],
+        'tools':['get_advertising_report'],'parameters':[],'entrypoint':'conversation',
+        'failure_policy':'独立推广注册表执行；固定门店/日期/模式；无SKU归因，不计算ROI/利润，缺失不补零'},
     'sales_summary':{'intents':['query_sales_performance'],'scopes':['single','group'],
         'requires':['sales'],'produces':['支付件数','商品分摊金额','数据覆盖'],
         'tools':['get_sales_metrics','get_product_group_sales'],'parameters':[],
@@ -41,7 +53,7 @@ UNCONNECTED_DOMAINS=[
         'message':'对话分析尚未接入评价明细，不能把销量变化归因于差评；需要评价时间、商品及订单关联数据。',
         'required_data':['评价明细','评价关联订单/SKU与时间']},
     {'code':'advertising_evidence','pattern':r'推广费|广告费|投产比|ROAS|ROI|点击成本|推广扣费',
-        'message':'推广费用页已有账本展示，但对话工具尚未接入投放与成交的联合分析；不能用销量工具代答推广效果。',
+        'message':'推广账本请通过对话推广专项查询扣费、点击与费用率；销量调查不能代答推广效果，当前没有广告归因数据，不计算ROI/ROAS。',
         'required_data':['小时投放扣费和点击','同口径成交/取消订单','广告归因口径']},
 ]
 
@@ -82,6 +94,9 @@ def bind_contract(task):
 
 def validate_plan(task,store=None):
     """执行前重新检查DAG、参数、意图、门店SKU和范围；返回真实所需工具清单。"""
+    if task.get('intent')=='query_combined':
+        from .combined_query import validate_combined
+        return validate_combined(task,store)
     plan=task.get('query_plan')
     if not isinstance(plan,dict) or plan.get('contract_version')!=CONTRACT_VERSION:raise ValueError('查询能力契约缺失或版本已变化，请重新提交问题。')
     allowed={'version','tier','model_calls','operation','ranking','metric','start_date','end_date','steps','contract_version','planning'}

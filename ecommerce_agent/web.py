@@ -31,6 +31,11 @@ class WorkspaceHTTPServer(ThreadingHTTPServer):
 
     allow_reuse_address = False
 
+    def server_close(self):
+        """关闭独立评测执行器，避免服务退出后继续发起模型请求。"""
+        for closer in getattr(self,'resource_closers',[]):closer()
+        super().server_close()
+
     def server_bind(self):
         """只改变本进程socket选项，不更改系统网络配置。"""
         if hasattr(socket, "SO_EXCLUSIVEADDRUSE"):
@@ -53,13 +58,27 @@ def runtime_view(service):
     return {'stores':stores,'totals':totals}
 
 
-def create_server(service, host="127.0.0.1", port=8080, token="", public_hosts=(), model_settings=None):
+def create_server(service, host="127.0.0.1", port=8080, token="", public_hosts=(), model_settings=None, eval_center=None):
     """创建服务但不阻塞启动；测试可绑定随机端口并使用真实 HTTP 请求验证。"""
     from .flow_view import FlowView
     flow_view=FlowView(STATIC.parent.parent)
     public_hosts = frozenset(public_hosts)
     conversations=Conversations(service)
     request_cancellations=RequestCancellations()
+    import threading
+    from .eval_center import code_digest
+    loaded_eval_source=code_digest(STATIC.parent.parent)
+    evaluation_lock=threading.Lock();centers=[]
+    def evaluations():
+        """按需初始化全工作区评测中心；与各门店经营任务分库保存。"""
+        nonlocal eval_center
+        with evaluation_lock:
+            if eval_center is None:
+                from .eval_center import EvalCenter
+                anchor=service.for_store(None) if hasattr(service,'for_store') else service
+                eval_center=EvalCenter(STATIC.parent.parent,anchor.database.parent/'evaluation',loaded_source=loaded_eval_source)
+            if eval_center not in centers:centers.append(eval_center)
+            return eval_center
     if (public_hosts or host not in ("127.0.0.1", "localhost", "::1")) and len(token) < 24:
         raise ValueError("监听非本机地址时，需设置至少 24 字符的 ECOMMERCE_WEB_TOKEN。")
 
@@ -139,6 +158,9 @@ def create_server(service, host="127.0.0.1", port=8080, token="", public_hosts=(
                                 "worker_alive": all(item["worker_alive"] for item in stats)})
                 return
             files = {"/": ("index.html", "text/html; charset=utf-8"),
+                     "/eval": ("eval.html", "text/html; charset=utf-8"),
+                     "/eval.js": ("eval.js", "text/javascript; charset=utf-8"),
+                     "/eval.css": ("eval.css", "text/css; charset=utf-8"),
                      "/flow": ("flow.html", "text/html; charset=utf-8"),
                      "/flow.js": ("flow.js", "text/javascript; charset=utf-8"),
                      "/flow.css": ("flow.css", "text/css; charset=utf-8"),
@@ -169,6 +191,19 @@ def create_server(service, host="127.0.0.1", port=8080, token="", public_hosts=(
                 self.send(404, {"error": "页面不存在。"})
                 return
             if not self.allowed():
+                return
+            if path.startswith('/api/eval/'):
+                try:
+                    center=evaluations()
+                    if path=='/api/eval/dataset':self.send(200,center.dataset())
+                    elif path=='/api/eval/jobs':self.send(200,{'jobs':center.list()})
+                    elif path=='/api/eval/compare':
+                        query=parse_qs(urlsplit(self.path).query)
+                        self.send(200,center.compare(query.get('left',[''])[0],query.get('right',[''])[0]))
+                    elif match:=re.fullmatch(r'/api/eval/jobs/([a-f0-9]{32})',path):self.send(200,center.get(match[1]))
+                    elif match:=re.fullmatch(r'/api/eval/jobs/([a-f0-9]{32})/cases/([a-zA-Z0-9_-]+)',path):self.send(200,center.case_detail(match[1],match[2]))
+                    else:self.send(404,{'error':'评测接口不存在。'})
+                except ValueError as error:self.send(400,{'error':str(error)})
                 return
             if path == '/api/model-settings':
                 if self.model_access():self.send(200,model_settings.public())
@@ -289,6 +324,7 @@ def create_server(service, host="127.0.0.1", port=8080, token="", public_hosts=(
         def do_POST(self):
             """仅接受受限 JSON 请求；不允许用户从 API 指定文件路径或模型密钥。"""
             path = urlsplit(self.path).path
+            eval_action=re.fullmatch(r'/api/eval/jobs/([a-f0-9]{32})/(cancel|review)',path)
             review_action = re.fullmatch(r"/api/reviews/([a-f0-9]{32})/(materials|recheck|accept)", path)
             mission_action=re.fullmatch(r"/api/missions/([a-f0-9]{32})/(run|action)",path)
             memory_action=re.fullmatch(r"/api/memory/([a-f0-9]{32})/retract",path)
@@ -301,7 +337,7 @@ def create_server(service, host="127.0.0.1", port=8080, token="", public_hosts=(
             import_action=re.fullmatch(r'/api/imports/([a-f0-9]{32})/(preview|commit|cancel)',path)
             decision_task=re.fullmatch(r'/api/tasks/([a-f0-9]{32})/decision',path)
             decision_action=re.fullmatch(r'/api/decisions/([a-f0-9]{32})/(approve|reject|execute)',path)
-            if path not in ("/api/tasks","/api/missions","/api/memory","/api/followups","/api/settings","/api/model-settings","/api/model-test","/api/store-context","/api/conversations","/api/imports/upload") and not review_action and not mission_action and not memory_action and not followup_action and not context_action and not conflict_action and not conversation_action and not import_action and not cancel_request and not cancel_task and not decision_task and not decision_action:
+            if path not in ("/api/eval/jobs","/api/tasks","/api/missions","/api/memory","/api/followups","/api/settings","/api/model-settings","/api/model-test","/api/store-context","/api/conversations","/api/imports/upload") and not eval_action and not review_action and not mission_action and not memory_action and not followup_action and not context_action and not conflict_action and not conversation_action and not import_action and not cancel_request and not cancel_task and not decision_task and not decision_action:
                 self.send(404, {"error": "接口不存在。"})
                 return
             if not self.allowed():
@@ -318,6 +354,15 @@ def create_server(service, host="127.0.0.1", port=8080, token="", public_hosts=(
                     return
                 payload = json.loads(self.rfile.read(size))
                 if not isinstance(payload,dict):raise ValueError('请求需为JSON对象。')
+                if path=='/api/eval/jobs':
+                    if payload.get('mode')=='live' and not self.model_access():return
+                    self.send(202,evaluations().create(payload));return
+                if eval_action:
+                    if eval_action[2]=='cancel':
+                        if payload:raise ValueError('停止评测不接受额外参数。')
+                        self.send(200,evaluations().cancel(eval_action[1]))
+                    else:self.send(200,evaluations().review(eval_action[1],payload))
+                    return
                 if cancel_request:
                     if set(payload)!={'request_id'} or not isinstance(payload['request_id'],str) or not re.fullmatch(r'[A-Za-z0-9_-]{1,100}',payload['request_id']):raise ValueError('需要合法的请求ID。')
                     conversations.load(cancel_request[1])  # 不占用会话执行锁，模型请求期间也可停止。
@@ -419,6 +464,7 @@ def create_server(service, host="127.0.0.1", port=8080, token="", public_hosts=(
 
     server = WorkspaceHTTPServer((host, port), Handler)
     server.daemon_threads = True
+    server.resource_closers=[lambda:[center.close() for center in centers]]
     return server
 
 

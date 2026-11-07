@@ -137,17 +137,18 @@ def generate_advertising(document, index, *, seed=None):
 class StoreHub:
     """每店一个服务实例和队列。逻辑隔离不是账号权限隔离，当前口令可访问配置内门店。"""
 
-    def __init__(self, root, state_dir, output, *, start_worker=True):
+    def __init__(self, root, state_dir, output, *, start_worker=True, annual_version=None):
         """只读取固定配置下的文件，路径由白名单店铺ID决定，不接受客户端任意路径。"""
         root = Path(root)
         config = json.loads((root / "data/stores.json").read_text(encoding="utf-8"))
-        self.default_query_scope=config.get('default_query_scope','all')
+        self.default_query_scope=config.get('default_query_scope','current')
         if self.default_query_scope not in ('all','current'):raise ValueError('默认门店查询范围无效。')
         # 只有完整生成并发布的年度版本才切换；旧JSON保留为小规模回归样本。
         annual=None
         active_path=root/'data/annual/active.json'
-        if active_path.exists():
-            version=json.loads(active_path.read_text(encoding='utf-8'))['version']
+        if annual_version is not None or active_path.exists():
+            # 内部评测可显式绑定历史版本；不改经营工作台的active指针。
+            version=annual_version if annual_version is not None else json.loads(active_path.read_text(encoding='utf-8'))['version']
             if not re.fullmatch(r'[a-f0-9]{12}',version):raise ValueError('年度版本ID不合法。')
             annual=root/'data/annual'/version
             if not (annual/'manifest.json').exists():raise ValueError('年度版本未完整发布。')

@@ -109,6 +109,13 @@ def comparison_view(manager,job):
             row['status']=task['status'];row['fingerprint']=task['parsed']['dataset_fingerprint']
             state=task.get('result') or {};analysis=state.get('analysis') or {}
             row['evidence_ids']=analysis.get('evidence_ids') or []
+            if task['parsed']['intent']=='query_combined':
+                row['sections']=analysis.get('sections',[])
+                row['business_answer']=analysis.get('business_answer')
+                row['comparable']=task['status']=='completed'
+                row['note']=analysis.get('overview') or ('等待各事项查询。' if task['status'] in ('queued','running') else '未生成完整结果，已取得部分结果可查看本店证据。')
+                view['rows'].append(row)
+                continue
             if not row['evidence_ids']:
                 row['evidence_ids']=[e['payload']['result']['evidence_id'] for e in task.get('events',[]) if e['type']=='tool_completed' and e.get('payload',{}).get('result',{}).get('ok')]
             if task['status']=='completed':
@@ -157,6 +164,9 @@ def comparison_view(manager,job):
     valid=[r for r in view['rows'] if r['comparable']];view['comparable_count']=len(valid)
     anchor=next((r for r in valid if r['store_id']==job['anchor_store']),None)
     view['summary']=f"{len(valid)}/{len(view['rows'])} 家数据可比较。"
+    if job['scope']['intent']=='query_combined':
+        view['summary']=f"{len(valid)}/{len(view['rows'])} 家门店的全部事项数据完整；各店保留独立事项结果，不将失败或缺数当作零。"
+        return view
     if job.get('store_ranking'):
         from .store_ranking import summarize
         return summarize(view,job['store_ranking'])

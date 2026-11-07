@@ -46,6 +46,8 @@ def load_suite(path,index_path):
         if case['split'] not in ('regression','holdout') or case['execution'] not in ('offline','model_allowed','conversation_state'):raise ValueError('案例分组无效。')
         if case['family'] in families and families[case['family']]!=case['split']:raise ValueError('同族问题不能跨split。')
         families[case['family']]=case['split']
+        if case.get('paraphrase_group') and case['paraphrase_group']!=case['family']:
+            raise ValueError('同义问法分组必须绑定同一family，避免跨split比较或样例泄漏。')
         texts=[t['question'] for t in case['turns']] if case['execution']=='conversation_state' else [case['question']]
         if any(not isinstance(q,str) or not 1<=len(q)<=2000 for q in texts):raise ValueError('评测问题无效。')
         questions.extend((identity,q) for q in texts)
@@ -128,7 +130,23 @@ def grade_execution(case,parsed,state,oracles):
     return checks
 
 
-def run_suite(root,dataset,output,split='regression',live_model=False,max_model_calls=12):
+def paraphrase_signature(parsed,store_id):
+    """同义问法只比较业务语义，不比较原话、耗时、模型路径及生成的任务ID。"""
+    group=parsed.get('product_scope') or {}
+    plan=parsed.get('query_plan') or {}
+    rank=plan.get('ranking') or {}
+    return {'store_id':parsed.get('store_id',store_id),'status':parsed.get('status'),
+        'sku_ids':sorted(group.get('sku_ids') or ([parsed['sku_id']] if parsed.get('sku_id') else
+            [p['sku_id'] for p in parsed.get('candidates',[])])),
+        'start_date':parsed.get('trend_start') if parsed.get('is_window') else parsed.get('target_date'),
+        'end_date':parsed.get('target_date'),'comparison_date':parsed.get('comparison_date'),
+        'intent':parsed.get('intent'),'operations':sorted(parsed.get('composite_operations') or
+            [step['operation'] for step in plan.get('steps',[])]),
+        'ranking':{key:rank.get(key) for key in ('metric','group_by','direction','limit')},
+        'missing_fields':parsed.get('clarification',{}).get('missing_fields',[])}
+
+
+def run_suite(root,dataset,output,split='regression',live_model=False,max_model_calls=12,*,on_progress=None):
     """运行固定年度版本；会话状态用真实协调器，但不启动后台工具或模型执行循环。"""
     from .store_workspace import StoreHub
     from .conversations import Conversations
@@ -143,7 +161,7 @@ def run_suite(root,dataset,output,split='regression',live_model=False,max_model_
     oracles={c['id']:c for c in json.loads((folder/'answers.json').read_text(encoding='utf-8'))['cases']}
     source_hash=hashlib.sha256(b''.join(p.read_bytes() for p in sorted((root/'ecommerce_agent').glob('*.py')))).hexdigest()
     today=date.fromisoformat(document['business_today']);stores={};catalogs={};rows=[];skipped=[];calls=0;safety=[];hub=None
-    settings=None
+    settings=None;paraphrases={}
     if live_model:
         from .local_model import LocalModelSettings
         settings=LocalModelSettings(root)
@@ -154,9 +172,13 @@ def run_suite(root,dataset,output,split='regression',live_model=False,max_model_
         calls+=1;return settings.plan_sales_query(question,context)
     try:
         for case in document['cases']:
+            from .cancellation import checkpoint
+            checkpoint()  # 平台可在用例边界停止；不把取消写成某题失败后继续整套。
             if split!='all' and case['split']!=split:continue
             if case['execution']=='model_allowed' and (not live_model or calls>=max_model_calls):
-                skipped.append({'case_id':case['id'],'reason':'model_disabled' if not live_model else 'model_budget_exhausted'});continue
+                skipped.append({'case_id':case['id'],'reason':'model_disabled' if not live_model else 'model_budget_exhausted'})
+                if on_progress:on_progress({'case_id':case['id'],'status':'skipped','reason':skipped[-1]['reason']})
+                continue
             started=time.perf_counter();before_calls=calls;state=None;error=None;trajectory=[]
             sid=case['store_id']
             if sid not in stores:
@@ -164,10 +186,8 @@ def run_suite(root,dataset,output,split='regression',live_model=False,max_model_
             store,catalog=stores[sid],catalogs[sid]
             if case['execution']=='conversation_state':
                 # 会话协调器使用独立评测工作区；不得读取用户真实聊天记录或复用上一case上下文。
-                active=json.loads((root/'data/annual/active.json').read_text(encoding='utf-8'))['version']
-                if active!=version:raise ValueError('多轮评测当前活动版本与固定版本不符。')
                 # 每次运行用独立队列，避免反复评测留下的queued任务污染下一次成绩。
-                if hub is None:hub=StoreHub(root,output/'conversation-state'/run_id,output/'conversation-runs'/run_id,start_worker=False)
+                if hub is None:hub=StoreHub(root,output/'conversation-state'/run_id,output/'conversation-runs'/run_id,start_worker=False,annual_version=version)
                 # 冻结数据集每题已显式指定store_id；旧会话评测固定单店范围，
                 # 新的默认全店策略由独立跨店回归覆盖，不追溯改变旧基线的任务含义。
                 manager=Conversations(hub,today=lambda:today,default_query_scope='current');doc=manager.new(sid);checks={};last=None
@@ -192,6 +212,10 @@ def run_suite(root,dataset,output,split='regression',live_model=False,max_model_
                 except Exception as exc:error=type(exc).__name__
                 checks=grade_execution(case,parsed,state,oracles)
                 if not safety and parsed['status']=='ready':safety=security_probes(parsed,store)
+            if case.get('paraphrase_group'):
+                signature=paraphrase_signature(parsed,sid)
+                previous=paraphrases.setdefault(case['paraphrase_group'],signature)
+                checks['paraphrase.scope_consistent']=signature==previous
             if error:checks['execution_exception']=False
             grade={'passed':all(checks.values()),'checks':checks,'failed_checks':[k for k,v in checks.items() if not v]}
             row={'case_id':case['id'],'trial':0,'category':case['category'],'split':case['split'],'grade':grade,'parsed':parsed,
@@ -199,8 +223,11 @@ def run_suite(root,dataset,output,split='regression',live_model=False,max_model_
                 'run_dir':state.get('run_dir') if state else None,'model_calls':calls-before_calls,'elapsed_ms':round((time.perf_counter()-started)*1000,2),
                 'error_type':error,'trajectory':trajectory,'evaluation_scope':case['execution']}
             rows.append(row);print(json.dumps({'case':case['id'],'passed':grade['passed'],'failed':grade['failed_checks']},ensure_ascii=False),flush=True)
+            checkpoint()
+            if on_progress:on_progress({'case_id':case['id'],'status':'passed' if grade['passed'] else 'failed','row':row})
     finally:
         if hub:hub.close()
+    checkpoint()
     summary=summarize(rows,skipped)
     report={'schema':'flower-quality-v1','run_id':run_id,'runner':'golden_live_planning' if live_model else 'golden_offline','trials':1,'case_count':len(rows),
         'all_trials_passed':summary['passed'],'model_calls':calls,'source_sha256':source_hash,'dataset_sha256':hashlib.sha256(dataset.read_bytes()).hexdigest(),

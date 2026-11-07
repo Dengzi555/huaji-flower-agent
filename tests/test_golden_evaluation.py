@@ -3,21 +3,34 @@ import json
 import tempfile
 import unittest
 from pathlib import Path
-from ecommerce_agent.golden_evaluation import lookup,MISSING,check_paths,load_suite,summarize,oracle_checks
+from ecommerce_agent.golden_evaluation import lookup,MISSING,check_paths,load_suite,summarize,oracle_checks,paraphrase_signature
 
 ROOT=Path(__file__).resolve().parents[1]
 
 
 class GoldenEvaluationTests(unittest.TestCase):
+    def test_paraphrase_signature_checks_business_scope_and_ignores_wording(self):
+        from copy import deepcopy
+        task={'status':'ready','intent':'query_combined','product_scope':{'sku_ids':['B','A']},
+            'target_date':'2026-10-25','trend_start':'2026-10-19','is_window':True,
+            'composite_operations':['inventory','sales'],'raw_question':'第一种问法'}
+        other=deepcopy(task);other.update(raw_question='另一种说法',understanding={'planning_calls':1})
+        other['product_scope']['sku_ids'].reverse();other['composite_operations'].reverse()
+        self.assertEqual(paraphrase_signature(task,'store-a'),paraphrase_signature(other,'store-a'))
+        other['target_date']='2026-10-24'
+        self.assertNotEqual(paraphrase_signature(task,'store-a'),paraphrase_signature(other,'store-a'))
+        self.assertNotEqual(paraphrase_signature(task,'store-a'),paraphrase_signature(task,'store-b'))
+
     def test_missing_is_not_expected_none(self):
         self.assertIs(lookup({},'sku'),MISSING)
         self.assertFalse(check_paths({}, {'sku':None})['sku'])
         self.assertTrue(check_paths({'sku':None},{'sku':None})['sku'])
 
-    def test_dataset_has_80_cases_and_no_exact_index_overlap(self):
+    def test_dataset_has_92_cases_and_no_exact_index_overlap(self):
         document,audit=load_suite(ROOT/'data/evaluation/golden_cases.json',ROOT/'data/intent_examples.json')
-        self.assertEqual(len(document['cases']),80)
-        self.assertEqual(sum(c['execution']=='model_allowed' for c in document['cases']),12)
+        self.assertEqual(len(document['cases']),92)
+        self.assertEqual(sum(c['execution']=='model_allowed' for c in document['cases']),18)
+        self.assertEqual(len({c['paraphrase_group'] for c in document['cases'] if c.get('paraphrase_group')}),4)
         self.assertEqual(sum(c['execution']=='conversation_state' for c in document['cases']),8)
         self.assertEqual(audit['exact_duplicates'],0)
 

@@ -17,6 +17,20 @@ class StoreResolutionTests(unittest.TestCase):
 
     def resolve(self,text,**kwargs):return resolve_stores(text,self.directory,self.context,**kwargs)
 
+    def test_omitted_store_uses_selection_but_explicit_scope_wins(self):
+        """界面选中店只补省略值；不能覆盖明确店名、全部范围或未知店名。"""
+        self.assertEqual(self.resolve('昨天哪款卖得最好',selected_store='d')['store_ids'],['d'])
+        self.assertEqual(self.resolve('杭州湖滨店昨天销量',selected_store='d')['store_ids'],['a'])
+        self.assertEqual(set(self.resolve('全部门店昨天销量',selected_store='d')['store_ids']),set('abcd'))
+        self.assertEqual(self.resolve('不存在店昨天销量',selected_store='d')['status'],'needs_clarification')
+        self.assertEqual(self.resolve('昨天销量',selected_store='not-allowed')['status'],'forbidden')
+
+    def test_followup_preserves_comparison_until_selection_changes(self):
+        self.context['query_store_ids']=['a','d']
+        self.assertEqual(self.resolve('那前天呢',selected_store='a')['store_ids'],['a','d'])
+        self.assertEqual(self.resolve('昨天销量怎么样',selected_store='a')['store_ids'],['a'])
+        self.assertEqual(self.resolve('那前天呢',selected_store='b')['store_ids'],['b'])
+
     def test_new_city_and_full_name_are_configuration_only(self):
         result=self.resolve('南京新街口店昨天销量')
         self.assertEqual(result['store_ids'],['d']);self.assertEqual(result['status'],'resolved')

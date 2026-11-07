@@ -8,9 +8,9 @@ const labels = {
   queued: "排队中", running: "调查中", completed: "调查完成", needs_clarification: "需要补充信息",
   needs_data: "缺少业务数据", unsupported: "暂不支持", failed: "执行失败", incomplete: "未完成", interrupted: "执行曾中断",cancelling:'正在停止',cancelled:'已停止'
 };
-const domains = { sales: "销售", traffic: "流量", inventory: "库存", promotions: "促销", traffic_channels: "渠道归因",sales_trend:"销量趋势",calendar:"经营日历",order_cohorts:"支付订单批次" };
-const intentLabels = { investigate_sales_change: "销量变化调查", query_sales_performance: "销量表现与趋势", query_inventory: "库存与缺货查询", query_promotions: "活动状态查询" };
-const toolNames = { get_sales_metrics: "查询销售数据", get_traffic_metrics: "查询商品流量", get_inventory_status: "查询库存状态", get_promotion_history: "查询促销记录", analyze_metrics: "计算指标并检查证据" };
+const domains = { product_group_sales:"商品集合销量",sales: "销售", traffic: "流量", inventory: "库存", promotions: "促销", traffic_channels: "渠道归因",sales_trend:"销量趋势",calendar:"经营日历",order_cohorts:"支付订单批次" };
+const intentLabels = { query_combined:"多事项经营查询", investigate_sales_change: "销量变化调查", query_sales_performance: "销量表现与趋势", query_inventory: "库存与缺货查询", query_promotions: "活动状态查询", query_advertising: "推广账本分析" };
+const toolNames = { get_inventory_range:"查询范围库存监测",get_promotion_range:"查询范围活动记录",get_product_group_sales:"查询商品集合销量",get_sales_metrics: "查询销售数据", get_traffic_metrics: "查询商品流量", get_inventory_status: "查询库存状态", get_promotion_history: "查询促销记录", analyze_metrics: "计算指标并检查证据" };
 const signals = { stockout_signal: "缺货相关信号", traffic_signal: "流量相关信号", promotion_ended_signal: "活动变化信号" };
 toolNames.get_channel_breakdown = "查询互斥归因渠道明细";toolNames.get_sales_trend="查询多日销量与基线";toolNames.get_calendar_context="查询节假日与调休日历";
 toolNames.get_order_funnel='查询同批订单取消与完成情况';
@@ -20,7 +20,13 @@ let inspectorPreference = null;
 let conversation=null, conversationId=sessionStorage.getItem('flower-conversation-id'), conversationBusy=false;
 let pendingRequest=null,stopRequested=false,stopInProgress=false;
 let currentCase = null;
-let currentStore = localStorage.getItem("flower-store-id") || "", storeEpoch = 0, adEpoch = 0, activeModule = "overview", adReport = null;
+let currentStore = localStorage.getItem("flower-store-id") || "", storeEpoch = 0, adEpoch = 0, activeModule = "investigation", adReport = null;
+// 总览是查询范围，不是虚构门店ID；后台取数和权限始终使用真实门店ID。
+let queryStoreScope=localStorage.getItem('flower-query-scope')==='all'?'all':'current';
+function syncStoreWindow(){
+  $('store-select').value=queryStoreScope==='all'?'__all__':currentStore;
+  $('store-scope-note').textContent=queryStoreScope==='all'?'总览窗口：默认查全部门店，也可直接指定店名':'单店窗口：默认查当前店，也可提问全部门店';
+}
 let storeDirectory = [];
 
 const reviewLabels = {awaiting_human:"等待人工核验",ready_for_recheck:"材料已保存，待复查",rechecking:"正在复查",awaiting_acceptance:"复查完成，待人工验收",resolved:"已验收关闭"};
@@ -89,10 +95,16 @@ function setInspector(open, remember = false) {
   if (remember) inspectorPreference = open;
 }
 
+function combinedOperations(parsed){
+  // 旧任务可能在日期澄清前落盘，只有routing.operations；显示兼容不授予执行权限。
+  const supplied=Array.isArray(parsed?.composite_operations)?parsed.composite_operations:parsed?.routing?.operations;
+  return Array.isArray(supplied)?[...new Set(supplied.filter(item=>['sales','inventory','promotions'].includes(item)))]:[];
+}
+
 function renderInspector(task = null) {
   const trace=task?.parsed.conversation_context;
   $("conversation-trace").replaceChildren();
-  if(trace){$("conversation-trace").append(node("strong","",`本次对话 · 第${trace.turn}轮`),node("p","",`沿用条件：${trace.inherited.map(k=>({sku:"商品",date:"日期",intent:"事项"}[k])).join("、")||"无"}。指标与证据未从前轮继承。`));}
+  if(trace){$("conversation-trace").append(node("strong","",`本次对话 · 第${trace.turn}轮`),node("p","",`沿用条件：${(Array.isArray(trace.inherited)?trace.inherited:[]).map(k=>({sku:"商品",date:"日期",intent:"事项"}[k])).join("、")||"无"}。指标与证据未从前轮继承。`));}
   const memories=task?.parsed.store_memory_snapshot||[];
   renderModelRuntime($("conversation-trace"),task?.parsed.planning_runtime,'准入与规划');
   renderModelRuntime($("conversation-trace"),task?.result?.model_runtime,'后台调查');
@@ -115,12 +127,12 @@ function renderInspector(task = null) {
   $("detail-product-title").textContent = product ? `${product.name}${product.listed_at ? ` · 上架 ${product.listed_at} · ${(product.business_tags || []).join(" / ")}` : ""}` : "尚未确定具体商品。";
   $("source-list").replaceChildren();
   let queried = 0;
-  const expected = task?.parsed.product_scope ? ['product_group_sales'] : currentTask?.parsed.intent === "query_inventory" ? ["inventory"] : currentTask?.parsed.intent === "query_promotions" ? ["promotions"] : currentTask?.parsed.intent === "query_sales_performance" ? ["sales"] : ["sales", "traffic", "inventory", "promotions"];
+  const expected = task?.parsed.intent==='query_combined'?combinedOperations(task.parsed).map(d=>d==='sales'?'product_group_sales':d):task?.parsed.product_scope ? ['product_group_sales'] : currentTask?.parsed.intent === "query_inventory" ? ["inventory"] : currentTask?.parsed.intent === "query_promotions" ? ["promotions"] : currentTask?.parsed.intent === "query_sales_performance" ? ["sales"] : ["sales", "traffic", "inventory", "promotions"];
   for (const [domain, title] of Object.entries(domains)) {
-    const event = (task?.events || []).findLast((entry) => entry.type === "tool_completed" &&
+    const event = (task?.events || []).findLast((entry) => ['tool_completed','tool_failed'].includes(entry.type) &&
       (entry.payload.result?.data?.table === domain || entry.payload.tool === {
         sales: "get_sales_metrics", traffic: "get_traffic_metrics", inventory: "get_inventory_status", promotions: "get_promotion_history"
-      }[domain]));
+      }[domain] || entry.payload.tool===({inventory:'get_inventory_range',promotions:'get_promotion_range',product_group_sales:'get_product_group_sales'}[domain])));
     const result = event?.payload.result;
     const supplied = result?.data?.records || [];
     const records = task?.parsed.intent === "query_sales_performance" ? supplied.slice(-1) : supplied;
@@ -185,6 +197,69 @@ function node(tag, className = "", text = "") {
   result.className = className;
   result.textContent = text;
   return result;
+}
+
+// 单一确认层：原生dialog管理焦点和Esc；不预选、不在打开时执行请求。
+let activeQuestionDialog=null;
+const shownQuestions=new Set();
+function askQuestion({title,description='',details=[],choices=[],allowText=false,placeholder='',submitLabel='确认并继续'}){
+  if(activeQuestionDialog)return Promise.resolve(null);
+  return new Promise(resolve=>{
+    const dialog=node('dialog','agent-question-dialog'),form=node('form','agent-question-form');
+    activeQuestionDialog=dialog;
+    const heading=node('h2','',title);heading.id='agent-question-title';
+    dialog.setAttribute('aria-labelledby',heading.id);
+    const header=node('header'),close=node('button','icon-button','×');close.type='button';close.setAttribute('aria-label','稍后处理');
+    header.append(node('span','agent-question-kicker','花迹 · 需要你的确认'),close);
+    form.append(header,heading);
+    if(description)form.append(node('p','agent-question-description',description));
+    for(const detail of details)form.append(node('p','agent-question-detail',detail));
+    const fieldset=node('fieldset','agent-question-choices');fieldset.append(node('legend','sr-only','选择答案'));
+    const radios=[];
+    for(const [index,choice] of choices.entries()){
+      const label=node('label','agent-question-option'),radio=node('input');radio.type='radio';radio.name='answer';radio.value=String(index);
+      const text=node('span');text.append(node('strong','',choice.label));if(choice.description)text.append(node('small','',choice.description));
+      label.append(radio,text);fieldset.append(label);radios.push(radio);
+    }
+    const input=node('textarea');input.rows=2;input.maxLength=500;input.placeholder=placeholder||'也可以直接补充你的想法';input.setAttribute('aria-label','补充信息');
+    if(allowText){
+      const label=node('label','agent-question-free','直接补充');
+      if(choices.length){const radio=node('input');radio.type='radio';radio.name='answer';radio.value='text';label.prepend(radio);radios.push(radio);input.addEventListener('input',()=>{radio.checked=true;});}
+      label.append(input);fieldset.append(label);
+    }
+    form.append(fieldset);
+    const error=node('p','agent-question-error');error.setAttribute('role','alert');form.append(error);
+    const footer=node('footer'),cancel=node('button','text-button','稍后处理'),submit=node('button','primary',submitLabel);cancel.type='button';submit.type='submit';footer.append(cancel,submit);form.append(footer);dialog.append(form);
+    const finish=value=>{dialog.close();dialog.remove();activeQuestionDialog=null;resolve(value);};
+    close.onclick=cancel.onclick=()=>finish(null);
+    dialog.addEventListener('cancel',event=>{event.preventDefault();finish(null);});
+    form.addEventListener('submit',event=>{event.preventDefault();const selected=radios.find(r=>r.checked);
+      if(allowText&&(!choices.length||selected?.value==='text')){if(!input.value.trim()){error.textContent='请补充信息后继续。';input.focus();return;}finish({text:input.value.trim()});return;}
+      if(!selected){error.textContent='请选择一项，也可以稍后处理。';return;}
+      finish({choice:choices[Number(selected.value)]});
+    });
+    document.body.append(dialog);dialog.showModal();
+    (radios[0]||input||cancel).focus();
+  });
+}
+
+function mountFollowup(target,{key,title,description,choices=[],originalQuestion,placeholder,valid}){
+  // 自动展示一次；关闭后保留重开入口。回执必须仍属于当前任务/会话和门店。
+  const open=async()=>{
+    if(!valid())return;
+    const answer=await askQuestion({title,description,choices,allowText:true,placeholder});
+    if(!answer)return;
+    if(!valid()||conversationBusy){notify('查询上下文已变化，请在当前问题上重新补充。');return;}
+    const question=answer.text?originalQuestion.replace(/最近(?!\s*[零一二两三四五六七八九十\d])/g,'')+' '+answer.text:originalQuestion;
+    pendingConfirmation=answer.choice?{question,...answer.choice.payload}:null;
+    $('question').value=question;$('investigation-form').requestSubmit();
+  };
+  const button=node('button','candidate-button','补充信息并继续');button.type='button';button.onclick=open;target.append(button);
+  if(!shownQuestions.has(key)){
+    shownQuestions.add(key);
+    // 回复渲染发生在请求finally之前，下一次事件循环再打开。
+    setTimeout(()=>{if(valid()&&!activeQuestionDialog)open();},0);
+  }
 }
 
 function notify(message = "") {
@@ -281,8 +356,8 @@ async function selectTask(id) {
     await loadHistory();
    
     if (activeId !== id) return;
-    if (task.review_case) await loadReview(task.review_case.id);
-    else {currentCase = null; $("review-panel").hidden = true;}
+    // 核验工单属于后台流程，经营问答不展开后台材料表单。
+    currentCase = null; $("review-panel").hidden = true;
     if (["queued", "running",'cancelling'].includes(task.status)) pollTimer = setTimeout(() => selectTask(id), 1000);
   } catch (error) {
     // 切换独立工作区后，浏览器可能还记着旧任务 ID；只清理失效选择，不删除历史数据。
@@ -330,13 +405,13 @@ function render(task) {
   const resultProduct=meta?.products.find(p=>p.sku_id===(conversationTurn?conversationTurn.scope.sku:task.parsed.sku_id));
   $("task-context").replaceChildren(node("strong", "", task.question), node("small", "", `${task.parsed.store_name||"当前门店"} · ${task.parsed.product_scope?.label||(resultProduct?resultProduct.short_name+" · "+resultProduct.variant:"规格待确认")} · ${task.parsed.target_date || "日期待确认"} / ${comparisonText} · 任务 ${task.id.slice(0, 8)}`));
   const validation = task.result?.validation;
-  $("validation-summary").hidden = !validation;
+  $("validation-summary").hidden = true;
   if (validation) $("validation-summary").textContent = `有限字段验收：${validation.status === "passed" ? "字段一致" : validation.status === "references_only" ? "仅有引用，尚无字段断言" : "未通过"} · ${validation.checked} 项。${validation.scope}`;
   $("download-report").hidden = !task.result;
   const analysis=task.result?.analysis;
   const problem=task.error_info||task.parsed.error_info||task.result?.error_info;
   if(problem&&task.status!=='needs_clarification')$('task-status').textContent=problem.title;
-  const blocked = ["needs_clarification", "needs_data", "unsupported"].includes(task.status)||!!problem;
+  const blocked = ["needs_clarification", "needs_data", "unsupported"].includes(task.status)||(!!problem&&analysis?.kind!=='combined');
   $("clarification").hidden = !blocked;
   $("clarification").replaceChildren();
   if (blocked) {
@@ -346,36 +421,22 @@ function render(task) {
     const issues=problem&&task.status!=='needs_clarification'?[problem.message]:task.parsed.issues;
     for (const issue of issues) $("clarification").append(node("p", "", issue.replaceAll("--sku", "回复中的商品确认卡片").replaceAll("--date", "明确日期或起止时间")));
     renderRecoveryActions($('clarification'),problem,task.question);
-    if(task.status==='needs_clarification'&&!task.parsed.target_date){
-      const card=node('form','followup-card'),label=node('label','','你想查看哪段时间？'),input=node('input');
-      input.type='text';input.required=true;input.maxLength=100;input.placeholder='例如：昨天、近7天、10月1日至15日';input.setAttribute('aria-label','补充查询日期或时间段');
-      const send=node('button','candidate-button','补充并继续');send.type='submit';label.append(input);card.append(label,send);
-      card.addEventListener('submit',event=>{event.preventDefault();if(conversationBusy||!input.value.trim())return;
-        $('question').value=task.question.replace(/最近(?!\s*[零一二两三四五六七八九十\d])/g,'')+' '+input.value.trim();
-        pendingConfirmation=null;$('investigation-form').requestSubmit();});$('clarification').append(card);
-    }
-    if(task.status==='needs_clarification'&&task.parsed.group_candidate&&!task.parsed.product_scope){
-      const group=task.parsed.group_candidate,button=node('button','candidate-button',`确认${group.label}（${group.sku_ids.length}款）并查询`);
-      button.addEventListener('click',()=>{
-        pendingConfirmation={question:task.question,sku:'__all_matched__',intent:'query_sales_performance'};$('question').value=task.question;
-        $('investigation-form').requestSubmit();
-      });$('clarification').append(button);
-    }
-    for (const candidate of task.status!=='needs_clarification'||task.parsed.group_candidate||task.parsed.sku_id&&!task.parsed.product_resolution?.suggested_correction?[]:task.parsed.candidates) {
-      const button = node("button", "candidate-button", `选择 ${candidate.short_name || candidate.name} · ${candidate.variant} ↗`);
-      button.addEventListener("click", () => {
-        $("question").value = task.question; pendingConfirmation={question:task.question,sku:candidate.sku_id};
-        $("investigation-form").requestSubmit();
-        $("question").scrollIntoView({ behavior: "smooth", block: "center" });
-
-        notify();
-      });
-      $("clarification").append(button);
+    if(task.status==='needs_clarification'){
+      const choices=[],sid=currentStore;
+      if(task.parsed.group_candidate&&!task.parsed.product_scope){
+        const group=task.parsed.group_candidate;
+        choices.push({label:`全部${group.label}（${group.sku_ids.length}款）`,payload:{sku:'__all_matched__',intent:'query_sales_performance'}});
+      }else if(!task.parsed.sku_id||task.parsed.product_resolution?.suggested_correction){
+        for(const candidate of task.parsed.candidates||[])choices.push({label:`${candidate.short_name||candidate.name} · ${candidate.variant}`,payload:{sku:candidate.sku_id}});
+      }
+      mountFollowup($('clarification'),{key:`task:${sid}:${task.id}`,title:!task.parsed.target_date?'你想查看哪段时间？':'请确认本次查询范围',
+        description:(task.parsed.issues||[]).join('\n'),originalQuestion:task.question,choices,
+        placeholder:!task.parsed.target_date?'例如：近7天、10月1日至15日；也可以一起补充商品范围':'例如：所有红玫瑰款式，查询上个月',
+        valid:()=>currentTask?.id===task.id&&currentStore===sid});
     }
   }
   renderSummary(task);
   renderOrderFunnel($("summary"),task);
-  if(task.parsed?.date_resolution?.length)$("summary").prepend(node('p','evidence-extra',task.parsed.date_resolution.join(' ')));
   if(task.result?.sales_trend)renderSalesTrend($("summary"),task);
   for(const trend of task.result?.selected_sales_trends||[])renderSalesTrend($("summary"),{...task,result:{...task.result,sales_trend:trend}});
   renderEvidence(task);
@@ -439,6 +500,7 @@ function renderSummary(task) {
     return;
   }
   if(analysis.guidance)renderOperatingGuidance(target,analysis.guidance);
+  if(analysis.kind==='combined'){renderCombinedAnalysis(target,analysis,task.result.execution);return;}
   renderDecision(target,task);
   if (analysis.kind === "lookup") {
     const cards = node("div", "metrics");
@@ -578,6 +640,27 @@ function renderDecision(target,task){
   target.append(section);
 }
 
+function renderCombinedAnalysis(target,analysis,execution){
+  // 先回答经营问题；工具调度和验收细节留在来源数据、执行过程页签。
+  const answer=analysis.business_answer;
+  if(answer){
+    target.append(node('h2','',answer.title));
+    if(answer.notice)target.append(node('p','',answer.notice));
+    for(const part of answer.parts||[]){
+      const card=node('section','combined-section');card.dataset.domain=part.domain;
+      card.append(node('h3','',part.title));
+      for(const text of part.paragraphs||[])card.append(node('p','',text));
+      target.append(card);
+    }
+    if(answer.next_steps?.length){
+      target.append(node('h3','','建议先看'));
+      const list=node('ul');for(const text of answer.next_steps)list.append(node('li','',text));target.append(list);
+    }
+    return;
+  }
+  target.append(node('p','','正在整理经营结果。'));
+}
+
 function renderEvidence(task) {
   const target = $("evidence"); target.replaceChildren();
   const wrap = node("div", "table-wrap"), table = node("table"), head = node("thead"), heading = node("tr");
@@ -691,7 +774,7 @@ $("investigation-form").addEventListener("submit", async (event) => {
     }
     if(!conversation)await startConversation();
     if(stopRequested){notify('发送前已停止，没有提交新请求。');return;}
-    const result=await conversationRequest(`/api/conversations/${conversation.id}/turns`, {...payload,revision:conversation.revision,store_id:currentStore,mode:'auto'});
+    const result=await conversationRequest(`/api/conversations/${conversation.id}/turns`, {...payload,revision:conversation.revision,store_id:currentStore,store_scope:queryStoreScope,mode:'auto'});
     if(!result)return;
     if($("question").value.trim()===question)$("question").value='';
     await adoptConversation(result.conversation);
@@ -774,7 +857,7 @@ if (window.matchMedia("(max-width: 640px)").matches) $("toggle-sidebar").setAttr
 
 async function initialize() {
   // 初始化先验证 API 可用，再恢复历史；浏览器存的 task ID 只是指针，数据库才是事实源。
-  try { await loadStores(); await loadMeta(); await loadHistory(); await restoreConversation();notify(); await showModule("overview"); }
+  try { await loadStores(); await loadMeta(); await loadHistory(); await restoreConversation();notify(); await showModule("investigation"); }
   catch (error) { notify(error.message); }
 }
 initialize();
@@ -786,16 +869,29 @@ async function loadStores() {
   if (!storeDirectory.some((shop)=>shop.id === currentStore&&shop.status!=='inactive')) currentStore = directory.default_store;
   localStorage.setItem("flower-store-id", currentStore);
   $("store-select").replaceChildren();
+  const allOption=node('option','','全部门店 · 总览');allOption.value='__all__';$('store-select').append(allOption);
   for (const shop of storeDirectory) {
     const option = node("option", "", shop.name); option.value = shop.id;option.disabled=shop.status==='inactive'; $("store-select").append(option);
   }
-  $("store-select").value = currentStore;
+  syncStoreWindow();
 }
 
 async function changeStore(fromConversation=false) {
+  const previousScope=queryStoreScope;
+  if(fromConversation!==true){
+    queryStoreScope=$('store-select').value==='__all__'?'all':'current';
+    localStorage.setItem('flower-query-scope',queryStoreScope);
+    if(queryStoreScope==='all'){
+      clearTimeout(pollTimer);resetTask();await startConversation();syncStoreWindow();await showModule('investigation');return;
+    }
+  }
   const previous = currentStore;
   currentStore = $("store-select").value;
-  if (previous === currentStore) return;
+  syncStoreWindow();
+  if (previous === currentStore){
+    if(fromConversation!==true&&previousScope!==queryStoreScope){resetTask();await startConversation();}
+    return;
+  }
   ++storeEpoch; ++adEpoch; clearTimeout(pollTimer); resetTask(); adReport = null;
   $("ad-shop-label").textContent = `${storeDirectory.find((shop)=>shop.id === currentStore)?.name || "当前门店"} · 正在读取推广账本`;
   $("ad-metrics").replaceChildren(); $("ad-chart").replaceChildren(); $("ad-table").replaceChildren(); $("ad-attention").replaceChildren(); $("ad-export").disabled = true;
@@ -810,6 +906,11 @@ async function changeStore(fromConversation=false) {
 
 async function showModule(module) {
   activeModule=module;
+  // 推广账本和导入仍是单店能力，进入时明确显示实际使用的门店，避免总览名义下展示单店数据。
+  if(['advertising','imports'].includes(module)&&queryStoreScope==='all'){
+    queryStoreScope='current';localStorage.setItem('flower-query-scope',queryStoreScope);syncStoreWindow();
+  }
+  document.body.classList.toggle("investigation-active", module==="investigation");
   if(module==='imports')setInspector(false);
   if(module!=="investigation")clearTimeout(pollTimer);
   const views={overview:"overview-view",investigation:"investigation-workbench",advertising:"advertising-view",imports:"imports-view"};
@@ -986,6 +1087,37 @@ $("connect-workspace").addEventListener("click",()=>{sessionStorage.setItem("sig
 // 经营背景是人工来源的上下文，不提供模型自动写入或从报告自动总结入库的入口。
 let contextSourceTask=null;
 const contextLabels={night_ads_strategy:"夜间投放策略",budget_policy:"推广费用约定",response_preference:"汇报偏好",product_context:"商品经营背景",period_observation:"阶段观察"};
+async function confirmContextMemory(memory){
+  const sid=currentStore,product=meta?.products.find(p=>p.sku_id===memory.sku_id);
+  const answer=await askQuestion({title:'将这条背景用于后续调查？',description:memory.content,
+    details:[`门店：${storeDirectory.find(s=>s.id===sid)?.name||sid}`,`范围：${product?.name||memory.sku_id||'本店全部商品'}`,
+      `来源：${memory.source}`,`有效期：${memory.valid_from} 至 ${memory.expires_on}`],
+    choices:[{label:'确认生效',description:'仅影响后续适用的调查，历史报告保持原样。'},{label:'暂不确认',description:'保留为候选，不参与调查。'}]});
+  if(answer?.choice?.label!=='确认生效')return false;
+  if(sid!==currentStore)throw new Error('门店已切换，请回到原门店重新确认。');
+  await api(`/api/store-context/${memory.id}/action`,{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({action:'confirm',expected_revision:memory.revision,note:'运营者在确认弹窗中核对来源与范围'})});
+  await refreshContextMemories();
+  // 确认后如出现范围遮蔽，当场展示两侧内容；关闭不会隐式裁决。
+  const {conflicts}=await api('/api/context-conflicts');
+  if(sid!==currentStore)return true;
+  const conflict=conflicts.find(c=>c.general_id===memory.id||c.specific_id===memory.id);
+  if(conflict)await resolveContextConflict(conflict);
+  return true;
+}
+async function resolveContextConflict(conflict){
+  const sid=currentStore;
+  const answer=await askQuestion({title:'这两条经营背景如何使用？',description:'它们覆盖同一事项，尚未判断内容是否矛盾。',
+    details:[`门店：${storeDirectory.find(s=>s.id===sid)?.name||sid}`,
+      `门店级：${conflict.general?.content||'—'}`,`商品级：${conflict.specific?.content||'—'}`],
+    choices:[{label:'两者并存',value:'coexist',description:'保留两条记录；查询具体商品时，同类型仍优先使用商品级。'},
+      {label:'仅保留商品级',value:'keep_specific',description:'撤回整条门店级背景，也会影响其他商品的后续调查。'},
+      {label:'仅保留门店级',value:'keep_general',description:'撤回这条商品级背景，后续使用门店通用背景。'}]});
+  if(!answer)return;
+  if(sid!==currentStore)throw new Error('门店已切换，请在原门店处理这条背景。');
+  await api(`/api/context-conflicts/${conflict.id}/resolve`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({resolution:answer.choice.value,note:`运营者裁决：${answer.choice.label}`})});
+  await refreshContextMemories();$('context-notice').textContent='已处理，历史任务快照保持原样。';
+}
 async function loadContextEditor(fromTask=false){
   contextSourceTask=fromTask&&currentTask?.status==="completed"?currentTask.id:null;
   $("context-store-label").textContent=`${storeDirectory.find(s=>s.id===currentStore)?.name||"本店"} · 旧备注不自动迁入；背景不改写指标或费用线。`;
@@ -1007,7 +1139,7 @@ async function refreshContextMemories(){
       card.append(node('strong','',`${contextLabels[memory.slot]} · ${state}`),node('p','',memory.content),node('small','',`${memory.sku_id||'本店全部商品'} · ${memory.valid_from} 至 ${memory.expires_on} · ${memory.source}`));
       if(memory.shadow_pending)card.append(node('small','context-shadow-note','与另一条同事项背景存在范围遮蔽，检索只取其一，请在下方裁决。'));
       const act=async action=>{try{await api(`/api/store-context/${memory.id}/action`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action,expected_revision:memory.revision,note:action==='confirm'?'运营者核对来源与适用范围后确认':'运营者从本店背景管理中撤回'})});await refreshContextMemories();$("context-notice").textContent=action==='confirm'?'已确认，仅影响后续相关调查。':'已撤回，历史任务快照保持原样。';}catch(error){$("context-notice").textContent=error.message;}};
-      if(memory.status==='proposed'){const confirm=node('button','text-button','确认用于后续调查');confirm.type='button';confirm.addEventListener('click',()=>act('confirm'));card.append(confirm);}
+      if(memory.status==='proposed'){const confirm=node('button','text-button','确认用于后续调查');confirm.type='button';confirm.addEventListener('click',async()=>{confirm.disabled=true;try{await confirmContextMemory(memory);}catch(error){$('context-notice').textContent=error.message;}finally{confirm.disabled=false;}});card.append(confirm);}
       const retract=node('button','text-button','撤回');retract.type='button';retract.addEventListener('click',()=>act('retract'));card.append(retract);$("context-memory-list").append(card);
     }
     if(!current.length)$("context-memory-list").append(node('p','account-note','本店暂无背景记录，需要时再添加。'));
@@ -1018,20 +1150,21 @@ async function refreshContextConflicts(){
   const box=$("context-conflict-list");if(!box)return;box.replaceChildren();
   try{const {conflicts}=await api('/api/context-conflicts');
     if(!conflicts.length)return;
-    box.append(node('p','account-note',`${conflicts.length} 组同事项背景存在范围遮蔽：检索默认只取商品级，门店级会被静默忽略。裁决后不再提示。`));
+    box.append(node('p','account-note',`${conflicts.length} 组背景覆盖同一事项：具体商品默认使用商品级背景，任务会披露待处理的覆盖关系。`));
     for(const conflict of conflicts){
       const card=node('article','context-conflict-item');
       card.append(node('strong','',`${contextLabels[conflict.slot]||conflict.slot} · 待裁决`));
       for(const side of [['门店级',conflict.general],['商品级',conflict.specific]])if(side[1])card.append(node('p','',`${side[0]}：${side[1].content}`),node('small','',`${side[1].source} · ${side[1].valid_from} 至 ${side[1].expires_on}`));
-      const resolve=async(resolution,label)=>{try{await api(`/api/context-conflicts/${conflict.id}/resolve`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({resolution,note:`运营者裁决：${label}`})});await refreshContextMemories();$("context-notice").textContent='已裁决，历史任务快照保持原样。';}catch(error){$("context-notice").textContent=error.message;}};
-      for(const entry of [['keep_specific','保留商品级'],['keep_general','保留门店级'],['coexist','两者并存']]){const button=node('button','text-button',entry[1]);button.type='button';button.addEventListener('click',()=>resolve(entry[0],entry[1]));card.append(button);}
+      const button=node('button','text-button','查看并确认处理方式');button.type='button';button.onclick=async()=>{button.disabled=true;try{await resolveContextConflict(conflict);}catch(error){$('context-notice').textContent=error.message;}finally{button.disabled=false;}};card.append(button);
       box.append(card);
     }
   }catch(error){$("context-notice").textContent=error.message;}
 }
 $("context-memory-form").addEventListener('submit',async event=>{event.preventDefault();event.submitter.disabled=true;
   try{const payload={slot:$("context-slot").value,sku_id:$("context-sku").value,content:$("context-content").value,source:$("context-source").value,valid_from:$("context-from").value,expires_on:$("context-expiry").value};if(contextSourceTask)payload.source_task_id=contextSourceTask;
-    await api('/api/store-context',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});await refreshContextMemories();$("context-notice").textContent='已保存为候选；核对后点击确认才会参与后续调查。';
+    const sid=currentStore,result=await api('/api/store-context',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});await refreshContextMemories();
+    if(sid===currentStore&&result.memory.status==='proposed')await confirmContextMemory(result.memory);
+    $("context-notice").textContent='背景已保存；只有确认生效的记录才会参与后续调查。';
   }catch(error){$("context-notice").textContent=error.message;}finally{event.submitter.disabled=false;}});
 $("save-task-context").addEventListener('click',async()=>{await loadModelSettings();await loadContextEditor(true);$("store-context-panel").open=true;});
 // 进入背景录入时收起API表单，让来源和有效期直接可见，不堆成冗长设置页面。

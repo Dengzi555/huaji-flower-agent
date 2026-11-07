@@ -1,0 +1,25 @@
+const {createRequire}=require('node:module'),assert=require('node:assert/strict');
+const req=process.env.PLAYWRIGHT_PACKAGE?createRequire(process.env.PLAYWRIGHT_PACKAGE):require;
+const {chromium}=req('playwright');
+(async()=>{const browser=await chromium.launch({headless:true,channel:'msedge'});try{
+ const page=await browser.newPage({viewport:{width:1440,height:900}});
+ await page.goto(process.env.WORKBENCH_URL||'http://127.0.0.1:8080/');await page.waitForFunction(()=>typeof meta!=='undefined'&&meta);
+ await page.waitForLoadState('networkidle');
+ const options=await page.locator('#store-select option').evaluateAll(nodes=>nodes.map(n=>({value:n.value,text:n.textContent})));
+ assert.equal(options[0].value,'__all__');const sid=options[1].value;
+ await page.locator('#store-select').selectOption('__all__');
+ await page.waitForFunction(()=>queryStoreScope==='all'&&conversation&&activeModule==='investigation');
+ assert.equal(await page.locator('#store-select').inputValue(),'__all__');
+ await page.evaluate(()=>{conversationRequest=async(url,payload)=>{window.captured=payload;return null;};});
+ await page.locator('#question').fill('昨天销量怎么样');await page.locator('#question').press('Enter');
+ await page.waitForFunction(()=>window.captured);assert.equal((await page.evaluate(()=>captured)).store_scope,'all');
+ await page.reload();await page.waitForFunction(()=>typeof meta!=='undefined'&&meta);await page.waitForLoadState('networkidle');
+ assert.equal(await page.locator('#store-select').inputValue(),'__all__','刷新保持总览');
+ await page.locator('#store-select').selectOption(sid);await page.waitForFunction(()=>queryStoreScope==='current');await page.waitForLoadState('networkidle');
+ await page.evaluate(()=>{conversationRequest=async(url,payload)=>{window.captured=payload;return null;};});
+ await page.locator('#question').fill('昨天销量怎么样');await page.locator('#question').press('Enter');
+ await page.waitForFunction(()=>window.captured);const payload=await page.evaluate(()=>captured);assert.equal(payload.store_scope,'current');assert.equal(payload.store_id,sid);
+ await page.locator('#store-select').selectOption('__all__');await page.waitForFunction(()=>queryStoreScope==='all');
+ await page.screenshot({path:'runs/store-window.png'});
+ console.log('PASS: 总览选项、范围请求、单店切换、刷新持久化；未调用模型');
+ }finally{await browser.close();}})().catch(e=>{console.error(e);process.exitCode=1});

@@ -9,7 +9,7 @@ async function check(conversational, failure = false, newDraft = false, chat = f
   let replies=0;
   const elements = Object.fromEntries(['question','sku','target-date','intent','submit','store-select'].map(id => [id, {value: id === 'question' ? '99红玫昨天销量怎么样' : '', disabled:false}]));
   const context = { $:id=>elements[id], notify:()=>{}, meta:{capabilities:{conversation_state:conversational}},
-    currentTask:null,pendingConfirmation:null, conversationBusy:false, currentStore:'store-a',conversation:{id:'conversation-a',revision:0},
+    currentTask:null,pendingConfirmation:null, conversationBusy:false,stopRequested:false,pendingRequest:null,syncStopButton:()=>{}, queryStoreScope:'current',currentStore:'store-a',conversation:{id:'conversation-a',revision:0},
     crypto:{randomUUID:()=> 'test-key'},startConversation:async()=>{},adoptConversation:async()=>{},
     selectTask:async()=>{},resetTask:()=>{},renderConversation:()=>{},
     renderChatReply:()=>replies++,
@@ -30,6 +30,6 @@ async function check(conversational, failure = false, newDraft = false, chat = f
   const html=fs.readFileSync(path.join(__dirname,'../ecommerce_agent/web_assets/index.html'),'utf8');
   for(const id of ['scope-settings','sku','intent','target-date','question-mode'])assert.equal(html.includes(`id="${id}"`),false);
   assert.equal(app.includes("const questionMode="),false);
-  assert.ok(app.includes('补充查询日期或时间段'));
+  // 日期追问已由统一确认弹窗负责，交互边界见 tests/test_question_dialog.cjs。
   console.log('PASS: 8 composer cases, including visible chat reply and draft preservation');
 })().catch(error=>{console.error(error);process.exitCode=1;});

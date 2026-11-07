@@ -1,0 +1,48 @@
+/* 评测前端只呈现服务端账本；预期、实际、跳过和人工审核分别显示。 */
+'use strict';
+const $=id=>document.getElementById(id),el=(tag,text='',cls='')=>{const n=document.createElement(tag);n.textContent=text;n.className=cls;return n;};
+const labels={running:'运行中',cancelling:'正在停止',completed:'执行完毕',cancelled:'已停止',interrupted:'曾中断',failed:'失败',passed:'通过',skipped:'跳过'};
+let dataset=null,jobs=[],active=null,poll=null,caseId=null,selection=0;
+const message=text=>$('notice').textContent=text||'';
+async function api(path,body){const token=sessionStorage.getItem('signal-access-token');const response=await fetch(path,{method:body===undefined?'GET':'POST',headers:{...(body===undefined?{}:{'Content-Type':'application/json'}),...(token?{Authorization:`Bearer ${token}`}:{})},...(body===undefined?{}:{body:JSON.stringify(body)})});const result=await response.json();if(!response.ok){if(response.status===401)$('access').hidden=false;throw Error(result.error||'请求失败');}return result;}
+function guarded(fn){return async event=>{event?.preventDefault();try{message();await fn(event);}catch(error){message(error.message);}};}
+function pretty(value){return JSON.stringify(value,null,2);}
+function tag(status){return el('span',labels[status]||status,`tag ${status}`);}
+function stats(target,values){target.replaceChildren();for(const[label,value]of values){const card=el('div','','metric');card.append(el('span',label),el('strong',String(value)));target.append(card);}}
+function renderJobs(){
+ $('run-count').textContent=`${jobs.length} 次运行`;const list=$('job-list');list.replaceChildren();
+ if(!jobs.length)list.append(el('p','还没有评测记录。先运行回归集，建立第一份基线。','empty'));
+ for(const job of jobs){const button=el('button','',`job-item${active?.id===job.id?' active':''}`),name=el('span',job.label);name.append(el('small',`${new Date(job.created).toLocaleString('zh-CN')} · ${job.id.slice(0,8)}`));const info=el('span',job.mode==='live'?'真实模型规划':'离线');info.append(el('small',`${job.split} · ${job.total}题 · ${job.source_sha256.slice(0,8)}`));button.append(name,info,tag(job.status),el('span',job.summary?`${job.summary.passed}通过 · ${job.summary.failed}失败 · ${job.summary.skipped}跳过`:`已返回 ${job.done??0}/${job.total}`));button.addEventListener('click',guarded(()=>selectJob(job.id)));list.append(button);}
+ for(const id of ['compare-left','compare-right']){const select=$(id),before=select.value;select.replaceChildren(el('option','请选择完整运行'));select.firstChild.value='';for(const job of jobs.filter(j=>j.status==='completed')){const option=el('option',`${job.label} · ${job.id.slice(0,8)} · ${job.source_sha256.slice(0,8)}`);option.value=job.id;select.append(option);}if([...select.options].some(o=>o.value===before))select.value=before;}
+ $('run-start').disabled=jobs.some(j=>['running','cancelling'].includes(j.status));
+}
+async function loadJobs(){jobs=(await api('/api/eval/jobs')).jobs;renderJobs();}
+async function selectJob(id){clearTimeout(poll);const epoch=++selection;const job=await api(`/api/eval/jobs/${id}`);if(epoch!==selection)return;active=job;renderJobs();renderDetail();if(['running','cancelling'].includes(job.status))poll=setTimeout(()=>selectJob(id).then(loadJobs).catch(e=>message(e.message)),900);}
+function renderDetail(){
+ $('job-detail').hidden=false;$('job-title').textContent=active.label;$('job-message').textContent=active.message;
+ $('cancel-run').hidden=!['running','cancelling'].includes(active.status);$('cancel-run').disabled=active.status==='cancelling';
+ const count=status=>active.cases.filter(c=>c.status===status).length;
+ stats($('job-metrics'),[['通过',count('passed')],['失败',count('failed')],['跳过',count('skipped')],['已返回',`${active.cases.length}/${active.total}`]]);
+ $('job-progress').max=Math.max(1,active.total);$('job-progress').value=active.cases.length;
+ $('job-identity').textContent=pretty({dataset_version:active.dataset_version,dataset_sha256:active.dataset_sha256,source_sha256:active.source_sha256,source_unchanged:active.source_unchanged,fixture:active.fixture,mode:active.mode,planning_budget:active.max_model_calls,model_calls:active.model_calls,claw:active.claw,separation_audit:active.separation_audit});
+ const tbody=$('case-rows');tbody.replaceChildren();const filter=$('case-filter').value;
+ for(const row of active.cases.filter(c=>filter==='all'||c.status===filter)){
+  const tr=el('tr'),definition=dataset?.cases.find(c=>c.id===row.case_id),q=el('td',row.question||definition?.question||definition?.turns?.map(t=>t.question).join(' → ')||row.case_id);q.append(el('small',`${row.case_id} · ${row.category||definition?.category||''}`));
+  const status=el('td');status.append(tag(row.status));const review=active.reviews?.[row.case_id];if(review)status.append(el('small',{needs_review:'待核查',confirmed:'已确认问题',dismissed:'已排除'}[review.status]));
+  const button=el('button','详情');button.addEventListener('click',guarded(()=>openCase(row.case_id)));const action=el('td');action.append(button);
+  tr.append(q,status,el('td',row.failed_checks?.join('、')||({model_disabled:'离线模式未运行模型题',model_budget_exhausted:'规划预算已用完'}[row.reason]||'—')),el('td',row.elapsed_ms==null?'—':`${row.elapsed_ms} ms`),action);tbody.append(tr);
+ }
+}
+async function openCase(id){const jobId=active.id;const detail=await api(`/api/eval/jobs/${jobId}/cases/${encodeURIComponent(id)}`);if(active.id!==jobId)return;caseId=id;$('case-title').textContent=id;const d=detail.definition;$('case-question').textContent=d.question||d.turns?.map(t=>t.question).join(' → ');$('case-expected').textContent=pretty(d.expected||d.turns);$('case-actual').textContent=pretty(detail.execution||detail.result?.actual||detail.result||'尚未执行');$('case-evidence').textContent=pretty({evidence:detail.evidence||'本题无经营取数证据',events:detail.events});$('case-checks').textContent=detail.result?.failed_checks?.length?'未通过：'+detail.result.failed_checks.join('、'):'请结合本题状态查看预期与实际。';$('review-form').hidden=detail.result?.status!=='failed';const r=active.reviews?.[id];$('review-status').value=r?.status||'needs_review';$('review-note').value=r?.note||'';$('case-dialog').showModal();}
+function renderDataset(){const query=$('dataset-search').value.trim().toLowerCase();$('dataset-overview').textContent=`${dataset.cases.length}题 · ${dataset.version} · 业务日期 ${dataset.business_today} · 数据版本 ${dataset.fixture.annual_version}`;const list=$('dataset-list');list.replaceChildren();for(const c of dataset.cases.filter(c=>pretty(c).toLowerCase().includes(query))){const detail=el('details'),summary=el('summary',`${c.id} · ${c.category} · ${c.split}`);detail.append(summary,el('p',c.question||c.turns?.map(t=>t.question).join(' → ')),el('p',c.why,'muted'),el('pre',pretty(c.expected||c.turns)));list.append(detail);}}
+$('launch').addEventListener('submit',guarded(async()=>{const mode=$('run-mode').value;const job=await api('/api/eval/jobs',{label:$('run-label').value,split:$('run-split').value,mode,max_model_calls:Number($('run-budget').value),timeout_seconds:Number($('run-timeout').value)});await loadJobs();await selectJob(job.id);}));
+$('run-mode').addEventListener('change',()=>{const live=$('run-mode').value==='live';$('run-budget').disabled=!live;$('run-budget').value=live?'8':'0';});
+$('cancel-run').addEventListener('click',guarded(async()=>{await api(`/api/eval/jobs/${active.id}/cancel`,{});await selectJob(active.id);}));
+$('refresh').addEventListener('click',guarded(async()=>{await loadJobs();if(active)await selectJob(active.id);}));
+$('case-filter').addEventListener('change',renderDetail);$('dataset-search').addEventListener('input',renderDataset);$('case-close').addEventListener('click',()=>$('case-dialog').close());
+$('review-form').addEventListener('submit',guarded(async()=>{active=await api(`/api/eval/jobs/${active.id}/review`,{case_id:caseId,status:$('review-status').value,note:$('review-note').value});renderDetail();$('case-dialog').close();}));
+$('compare-form').addEventListener('submit',guarded(async()=>{const left=$('compare-left').value,right=$('compare-right').value;if(left===right)throw Error('请选择两次不同的运行。');const result=await api(`/api/eval/compare?left=${left}&right=${right}`);const target=$('comparison-result');target.replaceChildren();const cards=el('div','','metrics');stats(cards,[['修复',result.counts.fixed],['退步',result.counts.regressed],['保持',result.counts.unchanged],['涉及跳过',result.counts.skipped]]);target.append(cards,el('p',result.same_source?'两次源码指纹一致，可用于重复运行一致性检查。':'源码指纹不同，逐题查看本次修改影响。','muted'));const table=el('table'),head=el('tr');for(const h of ['案例','基线','当前','变化','耗时差'])head.append(el('th',h));table.append(head);for(const c of result.cases){const tr=el('tr');for(const value of [c.case_id,labels[c.before],labels[c.after],{fixed:'修复',regressed:'退步',unchanged:'保持',skipped:'涉及跳过'}[c.change],`${c.elapsed_delta_ms>0?'+':''}${c.elapsed_delta_ms} ms`])tr.append(el('td',value));table.append(tr);}target.append(table);}));
+for(const button of document.querySelectorAll('[data-view]'))button.addEventListener('click',()=>{for(const name of ['runs','dataset','compare'])$(name+'-view').hidden=name!==button.dataset.view;for(const b of document.querySelectorAll('[data-view]'))b.classList.toggle('active',b===button);$('page-title').textContent={runs:'看清一次改动的效果。',dataset:'把预期，写成可检验的问题。',compare:'进步与退步，都看得见。'}[button.dataset.view];});
+async function init(){dataset=await api('/api/eval/dataset');$('dataset-version').textContent=`Golden · ${dataset.cases.length}题`;renderDataset();await loadJobs();if(jobs.length)await selectJob(jobs[0].id);}
+$('access-save').addEventListener('click',guarded(async()=>{sessionStorage.setItem('signal-access-token',$('access-token').value);$('access-token').value='';$('access').hidden=true;await init();}));
+init().catch(error=>message(error.message));

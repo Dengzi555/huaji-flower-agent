@@ -66,5 +66,5 @@
       "status": "active"
     }
   ],
-  "default_query_scope": "all"
+  "default_query_scope": "current"
 }

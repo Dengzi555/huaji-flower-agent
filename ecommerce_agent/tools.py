@@ -47,6 +47,11 @@ SCHEMAS += [definition('get_sales_trend','Read fixed SKU daily sales series and 
             definition('get_calendar_context','Read verified annual holiday/makeup-workday calendar for the fixed window; do not infer a holiday from weekday alone.')]
 SCHEMAS += [definition('get_order_funnel','Read paid-date order cohorts for fixed SKU and two dates as of observed_at. Cancelled/completed/pending are exclusive states; late cancellations belong to original paid date. Never infer refunds or causality.')]
 SCHEMAS += [definition('get_product_group_sales','Read frozen product-group members and dates. Sum item units and allocated revenue only with complete coverage; never sum distinct visitors, buyers or order counts.')]
+# 只在广告专项注册表授权执行；销量任务不会因列出说明而获得推广账本权限。
+ADVERTISING_SCHEMA=definition('get_advertising_report','Read a frozen store/day paid advertising ledger. Store revenue is NOT attributed ad revenue; never infer ROI or profit.')
+ADVERTISING_SETTINGS_SCHEMA=definition('get_advertising_settings','Read local operating attention thresholds and hours for the frozen store. This is NOT platform budget, bid or live campaign configuration.')
+INVENTORY_RANGE_SCHEMA=definition('get_inventory_range','Read frozen product members and dates for daily stockout monitoring. Missing stays unknown; SKU-day minutes are not store elapsed time.')
+PROMOTION_RANGE_SCHEMA=definition('get_promotion_range','Read frozen product members and dates for campaign states. Campaign active is NOT paid advertising status.')
 # finish 只能断言原始批次计数；派生取消率由宿主计算，不作为原始来源字段。
 next(schema for schema in SCHEMAS if schema['function']['name']=='finish')['function']['parameters']['properties']['assertions']['items']['properties']['field']['enum'] += [
     'cohort_paid_orders','cancelled_orders','completed_orders','pending_orders','late_cancelled_orders']

@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="zh-CN">
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="theme-color" content="#faf9f6"><title>花迹 · 鲜花经营助手</title><link rel="icon" href="/brand-mark.svg" type="image/svg+xml"><link rel="stylesheet" href="/style.css"><link rel="stylesheet" href="/brand.css"><link rel="stylesheet" href="/knowledge.css"><link rel="stylesheet" href="/operations.css"><link rel="stylesheet" href="/trend.css"><script src="/theme.js"></script><script src="/trend.js" defer></script><script src="/app.js" defer></script></head>
-<body>
+<body class="investigation-active">
   <link rel="stylesheet" href="/imports.css"><script src="/imports.js" defer></script>
   <!-- 会话、输入和详情独立布局。沿用原 DOM ID 和 API，所有事实仍来自后端。 -->
   <svg class="icon-library" aria-hidden="true" xmlns="http://www.w3.org/2000/svg"><defs>
@@ -15,14 +15,14 @@
     <a class="brand" href="/" aria-label="花迹首页"><img class="flower-logo" src="/brand-mark.svg" alt="花仙女花瓣标识"><span>花迹 <small>HUAJI / 花仙女工作区</small></span></a>
     <button class="new-task" id="new-task"><svg class="icon"><use href="#i-plus"/></svg>新建调查<span class="key-hint">New</span></button>
     <div class="store-switch"><label for="store-select">当前管理门店</label><select id="store-select" aria-label="切换店铺"><option value="">正在读取门店</option></select><small id="store-scope-note">店铺数据、调查记录和推广账本独立</small></div>
-    <nav class="workspace-nav" aria-label="经营模块"><button id="nav-overview" class="selected">门店经营概览</button><button id="nav-investigation">经营调查</button><button id="nav-advertising">推广分析</button><button id="nav-imports">数据导入</button></nav><a class="flow-entry" href="/flow">项目流程图 ↗</a>
+    <nav class="workspace-nav" aria-label="经营模块"><button id="nav-investigation" class="selected">经营调查</button><button id="nav-overview">门店经营概览</button><button id="nav-advertising">推广分析</button><button id="nav-imports">数据导入</button></nav><a class="flow-entry" href="/eval">评测中心 ↗</a><a class="flow-entry" href="/flow">项目流程图 ↗</a>
     <div class="history-heading"><span>最近调查</span><button id="refresh-history" class="icon-button" aria-label="刷新历史调查">↻</button></div>
     <div id="history" class="history-list"><p class="subtle">还没有调查，先问一个问题。</p></div>
     <button type="button" id="open-account-settings" class="sidebar-bottom account-settings-button" aria-label="打开账号与API设置"><span class="profile-mark">花</span><span>花迹 · 本地工作区<small>账号与 API 设置 ↗</small></span><span class="live-dot"></span></button>
   </aside>
   <main>
     <header class="topbar"><div class="breadcrumb"><button id="toggle-sidebar" class="icon-button" aria-label="切换调查导航" aria-controls="sidebar" aria-expanded="true"><svg class="icon"><use href="#i-panel"/></svg></button><span>经营调查</span><span class="slash">/</span><strong id="session-title">新调查</strong></div><div class="topbar-right"><button id="theme-toggle" class="theme-toggle" type="button" aria-label="切换为暗色主题">☾ 暗色</button><span id="mode-badge" class="badge" hidden></span><button id="toggle-inspector" class="icon-button" aria-label="切换任务详情" aria-controls="inspector" aria-expanded="false"><svg class="icon"><use href="#i-panel"/></svg></button></div></header>
-    <section id="overview-view" class="operations-view" aria-label="门店经营概览"><div class="ad-heading"><div><p class="eyebrow">HUAXIANNV / STORE OPERATIONS</p><h1>门店经营，一眼看清。</h1><p>查看各店销量、营业额与推广费用，找到值得关注的经营变化。</p></div><img class="overview-brand" src="/brand-mark.svg" alt="花仙女花瓣标识"></div><form id="overview-filters" class="ad-filters"><label>经营日期<input type="date" id="overview-date" required></label><button type="submit" class="primary">更新概览</button></form><p id="overview-notice" role="status" class="ad-notice"></p><div id="overview-totals" class="ad-metrics"></div><div id="store-cards" class="store-cards"></div></section>
+    <section id="overview-view" class="operations-view" hidden aria-label="门店经营概览"><div class="ad-heading"><div><p class="eyebrow">HUAXIANNV / STORE OPERATIONS</p><h1>门店经营，一眼看清。</h1><p>查看各店销量、营业额与推广费用，找到值得关注的经营变化。</p></div><img class="overview-brand" src="/brand-mark.svg" alt="花仙女花瓣标识"></div><form id="overview-filters" class="ad-filters"><label>经营日期<input type="date" id="overview-date" required></label><button type="submit" class="primary">更新概览</button></form><p id="overview-notice" role="status" class="ad-notice"></p><div id="overview-totals" class="ad-metrics"></div><div id="store-cards" class="store-cards"></div></section>
     <section id="advertising-view" class="advertising-view" hidden aria-label="推广费用分析">
       <div class="ad-heading"><div><p class="eyebrow">HUAXIANNV / GROWTH LEDGER</p><h1>把每一次点击，放回经营里。</h1><p id="ad-shop-label">当前门店的手动与自动推广账本</p></div><span class="ad-heading-mark"><img src="/brand-mark.svg" alt=""></span></div>
       <form id="ad-filters" class="ad-filters"><label>分析日期<input id="ad-date" type="date" required></label><label>推广方式<select id="ad-mode"><option value="all">全部推广</option><option value="manual">手动推广</option><option value="automatic">自动推广</option></select></label><label>高费用线 %<input id="ad-high" type="number" value="10" min="0" max="100" step="0.1" required></label><label>低投入关注线 %<input id="ad-low" type="number" value="3" min="0" max="100" step="0.1" required></label><button class="primary" type="submit">更新分析</button><button id="ad-export" type="button" class="text-button" disabled>导出分析 JSON ↗</button></form>
@@ -40,11 +40,7 @@
           <details id="conversation-history" class="conversation-history"><summary>本次对话 <span id="conversation-turn-count">0</span> 轮 · 对象与条件变化</summary><div id="conversation-turns"></div></details>
           <section id="store-comparison" class="store-comparison" aria-label="跨店比较" hidden></section>
           <section class="intro" id="welcome"><img class="welcome-flower" src="/brand-mark.svg" alt=""><p class="eyebrow">花迹 · 鲜花经营助手</p><h1>循着花迹，看清每一次经营变化。</h1><p class="intro-copy">把经营中的疑问交给花迹，从销量、流量与库存中寻找线索。</p></section>
-        <!-- 输入区紧接欢迎文案；补充规格或日期仍建立关联新任务，不改写原问题。 -->
-        <section class="composer-area" aria-label="发起调查"><form id="investigation-form" class="composer">
-          <label for="question" class="sr-only">你想了解什么？</label><textarea id="question" name="question" rows="2" maxlength="2000" required placeholder="告诉花迹你想了解什么，例如：99红玫10月25日取消率，或上周日销量下降原因"></textarea>
-          <div class="composer-bottom"><div class="composer-mode"><span class="mode-dot"></span>经营调查<span class="mode-divider">/</span><span class="readonly-label">只读</span></div><div class="send-group"><span class="send-hint">Enter 发送 · Shift+Enter 换行</span><button type="button" class="send-button stop-button" id="stop-request" aria-label="停止本次请求" title="停止本次请求" hidden>■</button><button type="submit" class="send-button" id="submit" aria-label="开始调查" title="开始调查"><svg class="icon"><use href="#i-arrow"/></svg></button></div></div>
-        </form><p class="composer-disclaimer">花迹帮你整理线索，经营判断由你掌握。</p></section>
+
           <div class="investigation-data-note"><p id="date-coverage" class="date-coverage">正在读取数据范围</p><details class="product-title"><summary>数据与能力说明</summary><p id="dataset-note"></p><p>开启 DeepSeek 后，销量变化调查使用模型工具调用；其他专项查询按规则执行。结论需结合来源证据核验。</p></details></div>
           <section class="result-panel" aria-labelledby="result-title">
             <div id="task-context" class="task-context" hidden></div>
@@ -72,7 +68,11 @@
             <details class="review-timeline"><summary>查看材料与调查时间线</summary><div id="review-runs"></div><div id="review-events"></div></details>
           </section>
         </div>
-
+        <!-- 输入区独立于结果滚动区，始终占据底部空间，不遮挡最后一条回答。 -->
+        <section class="composer-area" aria-label="发起调查"><form id="investigation-form" class="composer">
+          <label for="question" class="sr-only">你想了解什么？</label><textarea id="question" name="question" rows="2" maxlength="2000" required placeholder="告诉花迹你想了解什么，例如：99红玫10月25日取消率，或上周日销量下降原因"></textarea>
+          <div class="composer-bottom"><div class="composer-mode"><span class="mode-dot"></span>经营调查<span class="mode-divider">/</span><span class="readonly-label">只读</span></div><div class="send-group"><span class="send-hint">Enter 发送 · Shift+Enter 换行</span><button type="button" class="send-button stop-button" id="stop-request" aria-label="停止本次请求" title="停止本次请求" hidden>■</button><button type="submit" class="send-button" id="submit" aria-label="开始调查" title="开始调查"><svg class="icon"><use href="#i-arrow"/></svg></button></div></div>
+        </form><p class="composer-disclaimer">花迹帮你整理线索，经营判断由你掌握。</p></section>
       </div>
 
     </div>

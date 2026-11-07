@@ -61,7 +61,7 @@ class SemanticFallbackTests(unittest.TestCase):
         # 统一入口不再先请求分类器；旧分类回调即使给多候选，也不参与本次规划。
         self.assertEqual(task['status'],'needs_data');self.assertEqual(len(calls),2)
         task=self.parse('昨天99红玫销量怎么样，同时查库存',route_classifier=multi,query_planner=planner)
-        self.assertEqual(task['status'],'needs_clarification');self.assertEqual(len(calls),2)
+        self.assertEqual(task['status'],'ready');self.assertEqual(task['intent'],'query_combined');self.assertEqual(len(calls),2)
 
     def test_variety_totals_rank_and_missing_member_is_not_zero(self):
         task=self.parse('10月25日哪类花卖得最好')

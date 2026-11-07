@@ -34,6 +34,8 @@ def snapshot_scope(task, *, confirmed_sku=None):
     }
     if task.get('product_scope'):
         scope['product_scope'] = deepcopy(task['product_scope'])
+    if task.get('composite_operations'):
+        scope['composite_operations']=list(task['composite_operations'])
     if 'is_window' in task:
         scope['time'] = {key: task.get(key) for key in TIME_FIELDS}
     if task.get('query_plan', {}).get('planning'):
@@ -86,7 +88,7 @@ class QueryContext:
             product=group_selector(product) if product else {'kind': 'single', 'sku_id': scope['sku']},
             time=time,
             operations={'ranking': deepcopy(product.get('ranking')) if product else None,
-                        'compare': compare},
+                        'compare': compare,**({'composite_operations':list(scope['composite_operations'])} if scope.get('composite_operations') else {})},
             complete=True,
         )
 
@@ -104,6 +106,11 @@ class QueryContext:
             product['type_override'] = list(constraints['product_types'])
         previous_rank = previous.get('ranking')
         operations = None
+        if scope.get('composite_operations'):
+            from .routing import route_question
+            decision=route_question(question)
+            if not decision['matched_rules']:
+                operations={'ranking':None,'compare':False,'composite_operations':list(scope['composite_operations'])}
         if previous_rank and (inherit_product or narrowing):
             current = ranking(question)
             reset = bool(re.search(r'总|合计|一共|多少|趋势|走势|库存|缺货|活动|取消', question))

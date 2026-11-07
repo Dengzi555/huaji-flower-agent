@@ -62,18 +62,19 @@ class RoutingWorkflowTests(unittest.TestCase):
             for filename in ("report.md", "evidence.json", "events.jsonl", "request.json"):
                 self.assertTrue((Path(state["run_dir"]) / filename).read_bytes())
 
-    def test_mixed_intent_is_not_executed_until_chosen(self):
-        """混合请求只产生候选，显式选择合法候选后才能继续；不能选任意意图。"""
+    def test_explicit_multiple_intents_compile_and_can_be_narrowed(self):
+        """明确多事项自动组合；显式缩小仍只能选择原问题中的合法事项。"""
         text = "怦然心动2026-10-23销量下降，顺便查库存"
         task = self.task(text)
-        self.assertEqual(task["status"], "needs_clarification")
+        self.assertEqual(task["status"], "ready")
+        self.assertEqual(task['intent'],'query_combined')
         self.assertEqual(len(task["routing"]["candidates"]), 2)
         selected = self.task(text, intent_override="query_inventory")
         self.assertEqual(selected["status"], "ready")
         wrong = self.task(text, intent_override="query_promotions")
         self.assertEqual(wrong["status"], "needs_clarification")
-        with self.assertRaises(ValueError):
-            execute_task(self.store, "FLR-ROSE-19-BOUQUET", "2026-10-23", self.root / "runs", task_context=task)
+        combined=execute_task(self.store, "FLR-ROSE-19-BOUQUET", "2026-10-23", self.root / "runs", task_context=task)
+        self.assertEqual(len(combined['analysis']['sections']),2)
 
     def test_write_request_cannot_be_hidden_by_sales_or_override(self):
         """退款/改价与销量混合也被拦住；选择只读标签不能绕过原始请求的边界。"""
@@ -140,12 +141,13 @@ class RoutingWorkflowTests(unittest.TestCase):
             self.reload()
 
     def test_web_service_mixed_followup_and_lookup(self):
-        """通过网页共用服务验证澄清→选择意图→保存关联→后台专项查询。"""
+        """共用服务支持组合请求，也可基于原问题明确缩小为一个事项。"""
         service = InvestigationService(self.path, self.catalog_path, self.root / "web", self.root / "web-runs")
         self.addCleanup(service.close)
         question = "炽热爱意2026-10-23销量下降，顺便查库存"
         first = service.create({"question": question})["task"]
-        self.assertEqual(first["status"], "needs_clarification")
+        self.assertIn(first["status"],('queued','running','completed'))
+        self.assertEqual(first['parsed']['intent'],'query_combined')
         task = service.create({"question": question, "intent": "query_inventory", "parent_id": first["id"]})["task"]
         deadline = time.monotonic() + 5
         while time.monotonic() < deadline:

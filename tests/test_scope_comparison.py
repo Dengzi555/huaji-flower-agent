@@ -132,7 +132,10 @@ class ScopeComparisonTests(unittest.TestCase):
         self.turn('南山店和南岸店比较')
         job=self.turn('两店库存呢')['conversation']['comparison']
         self.assertEqual(len(job['children']),2);self.assertEqual(job['scope']['intent'],'query_inventory')
-        anchor=next(c for c in job['children'] if c['store_id']==job['anchor_store'])
-        patched=self.turn('那99朵的呢')['task']
-        self.assertEqual(patched['parsed']['intent'],'query_inventory')
-        self.assertEqual(patched['parent_id'],anchor['task_id'])
+        # 已明确“两店”后，局部商品追问继续同一集合，不能悄悄缩成当前锚点店。
+        patched=self.turn('那99朵的呢')['conversation']['comparison']
+        self.assertEqual({c['store_id'] for c in patched['children']},{c['store_id'] for c in job['children']})
+        for child in patched['children']:
+            task=self.hub.for_store(child['store_id']).get(child['task_id'])
+            self.assertEqual(task['parsed']['intent'],'query_inventory')
+            self.assertEqual(task['parsed']['sku_id'],'FLR-ROSE-99-BOUQUET')

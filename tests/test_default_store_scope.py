@@ -24,6 +24,27 @@ class DefaultStoreScopeTests(unittest.TestCase):
         result=self.turn('本店99红玫10月25日销量怎么样')
         self.assertEqual(result['task']['parsed']['store_id'],'hx-sz-ns')
 
+    def test_current_default_queries_selected_store_without_store_followup(self):
+        """默认配置改为当前店，前端store_id与完整问题一同传入，不需要再确认门店。"""
+        self.manager.default_query_scope='current'
+        result=self.turn('99红玫10月25日销量怎么样',store_id='hx-cq-na')
+        self.assertIsNotNone(result['task'])
+        self.assertEqual(result['task']['parsed']['store_id'],'hx-cq-na')
+        self.assertNotIn('store',result['conversation']['waiting'])
+        self.assertNotIn('comparison',result['conversation'])
+        result=self.turn('全部门店99红玫10月25日销量怎么样',store_id='hx-cq-na')
+        self.assertEqual(len(result['conversation']['comparison']['children']),6)
+
+    def test_total_window_defaults_all_but_explicit_store_wins(self):
+        self.manager.default_query_scope='current'
+        result=self.turn('99红玫10月25日销量怎么样',store_scope='all',store_id='hx-sz-ns')
+        self.assertEqual(len(result['conversation']['comparison']['children']),6)
+        result=self.turn('南岸店99红玫10月25日销量怎么样',store_scope='all',store_id='hx-sz-ns')
+        self.assertEqual(result['task']['parsed']['store_id'],'hx-cq-na')
+        result=self.turn('99红玫10月25日销量怎么样',store_scope='current',store_id='hx-sz-ns')
+        self.assertEqual(result['task']['parsed']['store_id'],'hx-sz-ns')
+        with self.assertRaises(ValueError):self.turn('昨天销量',store_scope='invalid')
+
     def test_product_champion_and_store_champion_are_different_plans(self):
         self.seasonal_data()
         product=self.turn('今年情人节哪款卖得最好')['conversation']['comparison']

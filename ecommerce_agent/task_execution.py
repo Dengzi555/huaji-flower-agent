@@ -9,6 +9,7 @@ from pathlib import Path
 from .data import DataStore
 from .cancellation import CancelToken,CancelledError,cancel_scope,cancel_state,checkpoint
 from .errors import from_exception
+from .model_deadlines import INVESTIGATION_SECONDS
 
 
 class TaskExecutor:
@@ -107,7 +108,7 @@ class TaskExecutor:
             if task.get('model_execution'):
                 settings=self.settings()
                 if not settings:raise ValueError('本地模型配置不可用。')
-                options={'provider':settings.provider(task['model_execution']['model']),'max_steps':12,'timeout_seconds':180}
+                options={'provider':settings.provider(task['model_execution']['model']),'max_steps':12,'timeout_seconds':INVESTIGATION_SECONDS}
             return self.execute(store,task['sku_id'],task['target_date'],self.output,
                 task_context=task,on_event=observe,**options)
 

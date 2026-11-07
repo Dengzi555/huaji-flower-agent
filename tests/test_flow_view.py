@@ -16,12 +16,13 @@ class FlowViewTests(unittest.TestCase):
             for name in TRACKED:shutil.copy2(origin/name,code/name)
             (root/'.env').write_text('must-not-read-secret',encoding='utf-8')
             view=FlowView(root);first=view.snapshot()
-            self.assertFalse(first['restart_required']);self.assertEqual(len(first['routes']),4)
+            self.assertFalse(first['restart_required']);self.assertEqual(len(first['routes']),6)
+            self.assertIn('query_advertising',{r['name'] for r in first['routes']})
             self.assertIn('finish',{t['name'] for t in first['tools']})
             path=code/'routing.py';path.write_text(path.read_text(encoding='utf-8').replace('销量表现与趋势','单日销售概览'),encoding='utf-8')
             second=view.snapshot()
             self.assertTrue(second['restart_required']);self.assertNotEqual(first['version'],second['version'])
-            self.assertEqual(second['routes'][0]['label'],'单日销售概览')
+            self.assertEqual(next(r for r in second['routes'] if r['name']=='query_sales_performance')['label'],'单日销售概览')
             self.assertNotIn('must-not-read-secret',str(second))
             svg=ElementTree.fromstring(second['svg']);self.assertEqual(svg.attrib['viewBox'],'0 0 1480 2040')
             self.assertEqual(second['stages'][0]['stage'],'输入')
@@ -32,7 +33,7 @@ class FlowViewTests(unittest.TestCase):
         svg=ElementTree.fromstring(render_svg())
         nodes={n.attrib['data-node-id'] for n in svg.iter() if 'data-node-id' in n.attrib}
         edges={(n.attrib['data-from'],n.attrib['data-to']) for n in svg.iter() if 'data-from' in n.attrib}
-        expected={('input','stores'),('stores','rules'),('stores','chat'),
+        expected={('input','stores'),('stores','rules'),('stores','chat'),('stores','advertising'),('advertising','output'),
                   ('rules','retrieval'),('retrieval','planner'),('planner','validate'),
                   ('rules','validate'),('validate','clarify'),('validate','errors'),
                   ('validate','queue'),('queue','lookup'),('queue','investigate'),
@@ -43,5 +44,5 @@ class FlowViewTests(unittest.TestCase):
         self.assertNotIn(('planner','investigate'),edges)
         self.assertFalse(any(a=='evaluation' or b=='evaluation' for a,b in edges))
         content=''.join(svg.itertext())
-        for phrase in ['新查询未提门店 → 全部可访问门店','哪个店最好','各店哪款最好','缺数据不当作零']:
+        for phrase in ['总览窗口查全部；单店窗口查当前店','get_advertising_report','哪个店最好','各店哪款最好','缺数据不当作零']:
             self.assertIn(phrase,content)

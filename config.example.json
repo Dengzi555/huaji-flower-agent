@@ -7,5 +7,5 @@
   "model": "REPLACE_WITH_YOUR_TOOL_CALLING_MODEL",
   "api_key_env": "ECOMMERCE_AGENT_API_KEY",
   "max_steps": 16,
-  "timeout_seconds": 180
+  "timeout_seconds": 90
 }

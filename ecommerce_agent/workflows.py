@@ -30,6 +30,9 @@ def execute_task(store, sku_id, day, output, *, task_context, provider=None,
         raise ValueError("Unsupported workflow intent")
     # 路由只识别意图；冻结计划仍需在取数前独立复核，不能信任模型自报参数。
     validate_plan(task_context,store)
+    if intent=='query_combined':
+        from .combined_query import execute_combined
+        return execute_combined(store,task_context,output,on_event=on_event,timeout_seconds=timeout_seconds)
     if task_context.get('product_scope'):
         if intent!='query_sales_performance' or provider is not None:raise ValueError('品类范围当前只支持确定性销量表现查询。')
         return lookup(store,sku_id,day,output,task_context,on_event)

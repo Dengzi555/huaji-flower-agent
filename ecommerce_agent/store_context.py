@@ -26,7 +26,8 @@ def business_text(question,shops):
 def resolve_turn(manager,doc,payload,comparison):
     """返回(解析、原查询、条件参数)。仅明确确认时重放原查询，其他输入作为新问题。"""
     directory=StoreDirectory(manager.shops());context=context_for(doc,comparison)
-    context['default_query_scope']=manager.default_query_scope
+    # 窗口只决定省略店名时的默认范围；明确实体、权限和歧义仍由统一解析器校验。
+    context['default_query_scope']=payload.get('store_scope',manager.default_query_scope)
     question=payload['question'];pending=doc.get('pending_store');choice=payload.get('store_choice')
     response=normalize(question).strip('。?？')
     if pending and choice is None:

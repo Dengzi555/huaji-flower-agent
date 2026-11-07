@@ -28,7 +28,12 @@ def grade_case(case,parsed,state):
         checks['completed']=bool(state and state['status']=='completed')
         checks['evidence_written']=bool(state and (Path(state['run_dir'])/'evidence.json').exists())
         checks['causal_not_invented']=not state or (state.get('analysis') or {}).get('causal_root_cause','not_established')=='not_established'
-        checks['read_only_tools']=all(step.get('operation') in ('sales_summary','rank_products','compare_selected','compare_scope','inventory_status','promotion_status','investigate_sales_change') for step in parsed['query_plan']['steps'])
+        # 复用实际执行契约，组合查询新增操作时评分器不会维护另一份过时白名单。
+        try:
+            validate_plan(parsed)
+            checks['read_only_tools']=parsed.get('capability_contract',{}).get('read_only') is True
+        except (ValueError,TypeError,KeyError):
+            checks['read_only_tools']=False
     else:checks['no_execution']=state is None
     return {'passed':all(checks.values()),'checks':checks,'failed_checks':[key for key,value in checks.items() if not value]}
 

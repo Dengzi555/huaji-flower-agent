@@ -163,13 +163,13 @@ def resolve_stores(question,directory,context,*,planner=None,allowed_ids=None,se
         if len(previous)!=1:
             return _result(directory,context,status='needs_clarification',candidate_ids=[s for s in previous if s in allowed],message='上一轮涉及多家门店，请明确指哪一家。')
         sid=previous[0]
-    elif context.get('default_query_scope')=='all':
-        # 新查询的省略店名按业务配置查全部；真正的省略追问才继承已确认集合。
+    else:
+        # 新问题默认使用界面选中店；省略追问可继承已确认集合，但切换选中店后不沿用旧集合。
         followup=bool(context.get('query_store_ids') and re.match(r'那|继续|只看|仅看|换成|改查|再查|这款|它|这个|一共|总共|对比|相比',text))
-        ids=previous if followup else [sid for sid in directory.stores if sid in allowed]
+        if selected_store and selected_store!=context.get('focus_store'):followup=False
+        ids=previous if followup else [sid for sid in directory.stores if sid in allowed] if context.get('default_query_scope')=='all' else [selected_store or context.get('focus_store')]
         if not ids or any(sid not in allowed for sid in ids):return _result(directory,context,status='forbidden',message='查询范围包含不可访问门店。')
-        return _result(directory,context,store_ids=ids,action='compare' if len(ids)>1 else 'query',source='context' if followup else 'default_all')
-    else:sid=selected_store or (previous[0] if len(previous)==1 else context.get('focus_store'))
+        return _result(directory,context,store_ids=ids,action='compare' if len(ids)>1 else 'query',source='context' if followup or context.get('default_query_scope')!='all' else 'default_all')
     if sid not in allowed:return _result(directory,context,status='forbidden',message='当前门店不可访问。')
     return _result(directory,context,store_ids=[sid],source='context')
 

@@ -1,6 +1,6 @@
 {
   "schema": "flower-golden-v1",
-  "version": "2026-10-30-v1.2",
+  "version": "2026-11-05-v1.3",
   "business_today": "2026-10-29",
   "fixture": {
     "annual_version": "2ccf8089ebcc"
@@ -1360,6 +1360,285 @@
           }
         }
       ]
+    },
+    {
+      "id": "paraphrase-month-1",
+      "split": "regression",
+      "family": "paraphrase-month",
+      "paraphrase_group": "paraphrase-month",
+      "category": "同义问法一致性",
+      "execution": "offline",
+      "store_id": "hx-cq-na",
+      "question": "上个月红玫瑰销量怎么样",
+      "why": "相同业务语义应保留相同门店、商品集合、日期和执行事项；缺时间只追问时间。",
+      "expected": {
+        "status": "ready",
+        "parsed": {
+          "intent": "query_sales_performance",
+          "trend_start": "2026-09-01",
+          "target_date": "2026-09-30",
+          "product_scope.kind": "category",
+          "product_resolution.constraints.varieties": [
+            "红玫瑰"
+          ]
+        }
+      }
+    },
+    {
+      "id": "paraphrase-month-2",
+      "split": "regression",
+      "family": "paraphrase-month",
+      "paraphrase_group": "paraphrase-month",
+      "category": "同义问法一致性",
+      "execution": "model_allowed",
+      "store_id": "hx-cq-na",
+      "question": "红玫瑰上个月帮我做个销售盘点",
+      "why": "相同业务语义应保留相同门店、商品集合、日期和执行事项；缺时间只追问时间。",
+      "expected": {
+        "status": "ready",
+        "parsed": {
+          "intent": "query_sales_performance",
+          "trend_start": "2026-09-01",
+          "target_date": "2026-09-30",
+          "product_scope.kind": "category",
+          "product_resolution.constraints.varieties": [
+            "红玫瑰"
+          ]
+        }
+      }
+    },
+    {
+      "id": "paraphrase-month-3",
+      "split": "regression",
+      "family": "paraphrase-month",
+      "paraphrase_group": "paraphrase-month",
+      "category": "同义问法一致性",
+      "execution": "model_allowed",
+      "store_id": "hx-cq-na",
+      "question": "上月红玫销售情况总结",
+      "why": "相同业务语义应保留相同门店、商品集合、日期和执行事项；缺时间只追问时间。",
+      "expected": {
+        "status": "ready",
+        "parsed": {
+          "intent": "query_sales_performance",
+          "trend_start": "2026-09-01",
+          "target_date": "2026-09-30",
+          "product_scope.kind": "category",
+          "product_resolution.constraints.varieties": [
+            "红玫瑰"
+          ]
+        }
+      }
+    },
+    {
+      "id": "paraphrase-recent-1",
+      "split": "regression",
+      "family": "paraphrase-recent",
+      "paraphrase_group": "paraphrase-recent",
+      "category": "同义问法一致性",
+      "execution": "model_allowed",
+      "store_id": "hx-cq-na",
+      "question": "最近红玫卖得不好",
+      "why": "相同业务语义应保留相同门店、商品集合、日期和执行事项；缺时间只追问时间。",
+      "expected": {
+        "status": "needs_clarification",
+        "parsed": {
+          "clarification.missing_fields": [
+            "date"
+          ],
+          "target_date": null
+        }
+      }
+    },
+    {
+      "id": "paraphrase-recent-2",
+      "split": "regression",
+      "family": "paraphrase-recent",
+      "paraphrase_group": "paraphrase-recent",
+      "category": "同义问法一致性",
+      "execution": "model_allowed",
+      "store_id": "hx-cq-na",
+      "question": "最近红玫瑰帮我做个经营盘点",
+      "why": "相同业务语义应保留相同门店、商品集合、日期和执行事项；缺时间只追问时间。",
+      "expected": {
+        "status": "needs_clarification",
+        "parsed": {
+          "clarification.missing_fields": [
+            "date"
+          ],
+          "target_date": null
+        }
+      }
+    },
+    {
+      "id": "paraphrase-recent-3",
+      "split": "regression",
+      "family": "paraphrase-recent",
+      "paraphrase_group": "paraphrase-recent",
+      "category": "同义问法一致性",
+      "execution": "model_allowed",
+      "store_id": "hx-cq-na",
+      "question": "最近红玫经营咋样",
+      "why": "相同业务语义应保留相同门店、商品集合、日期和执行事项；缺时间只追问时间。",
+      "expected": {
+        "status": "needs_clarification",
+        "parsed": {
+          "clarification.missing_fields": [
+            "date"
+          ],
+          "target_date": null
+        }
+      }
+    },
+    {
+      "id": "paraphrase-combined-1",
+      "split": "regression",
+      "family": "paraphrase-combined",
+      "paraphrase_group": "paraphrase-combined",
+      "category": "同义问法一致性",
+      "execution": "offline",
+      "store_id": "hx-cq-na",
+      "question": "南岸店近7天向日葵销量、库存和活动一起看",
+      "why": "相同业务语义应保留相同门店、商品集合、日期和执行事项；缺时间只追问时间。",
+      "expected": {
+        "status": "ready",
+        "parsed": {
+          "intent": "query_combined",
+          "trend_start": "2026-10-22",
+          "target_date": "2026-10-28",
+          "composite_operations": [
+            "sales",
+            "inventory",
+            "promotions"
+          ],
+          "product_resolution.constraints.varieties": [
+            "向日葵"
+          ]
+        }
+      }
+    },
+    {
+      "id": "paraphrase-combined-2",
+      "split": "regression",
+      "family": "paraphrase-combined",
+      "paraphrase_group": "paraphrase-combined",
+      "category": "同义问法一致性",
+      "execution": "offline",
+      "store_id": "hx-cq-na",
+      "question": "重庆南岸店最近七天向日葵销量变化，同时查库存和活动",
+      "why": "相同业务语义应保留相同门店、商品集合、日期和执行事项；缺时间只追问时间。",
+      "expected": {
+        "status": "ready",
+        "parsed": {
+          "intent": "query_combined",
+          "trend_start": "2026-10-22",
+          "target_date": "2026-10-28",
+          "composite_operations": [
+            "sales",
+            "inventory",
+            "promotions"
+          ],
+          "product_resolution.constraints.varieties": [
+            "向日葵"
+          ]
+        }
+      }
+    },
+    {
+      "id": "paraphrase-combined-3",
+      "split": "regression",
+      "family": "paraphrase-combined",
+      "paraphrase_group": "paraphrase-combined",
+      "category": "同义问法一致性",
+      "execution": "offline",
+      "store_id": "hx-cq-na",
+      "question": "帮我查南岸店过去一周向日葵销量以及库存、活动",
+      "why": "相同业务语义应保留相同门店、商品集合、日期和执行事项；缺时间只追问时间。",
+      "expected": {
+        "status": "ready",
+        "parsed": {
+          "intent": "query_combined",
+          "trend_start": "2026-10-22",
+          "target_date": "2026-10-28",
+          "composite_operations": [
+            "sales",
+            "inventory",
+            "promotions"
+          ],
+          "product_resolution.constraints.varieties": [
+            "向日葵"
+          ]
+        }
+      }
+    },
+    {
+      "id": "paraphrase-ranking-1",
+      "split": "regression",
+      "family": "paraphrase-ranking",
+      "paraphrase_group": "paraphrase-ranking",
+      "category": "同义问法一致性",
+      "execution": "offline",
+      "store_id": "hx-cq-na",
+      "question": "红玫瑰10月25日哪款卖得最好",
+      "why": "相同业务语义应保留相同门店、商品集合、日期和执行事项；缺时间只追问时间。",
+      "expected": {
+        "status": "ready",
+        "parsed": {
+          "intent": "query_sales_performance",
+          "target_date": "2026-10-25",
+          "query_plan.ranking.direction": "desc",
+          "query_plan.ranking.group_by": "sku",
+          "product_resolution.constraints.varieties": [
+            "红玫瑰"
+          ]
+        }
+      }
+    },
+    {
+      "id": "paraphrase-ranking-2",
+      "split": "regression",
+      "family": "paraphrase-ranking",
+      "paraphrase_group": "paraphrase-ranking",
+      "category": "同义问法一致性",
+      "execution": "offline",
+      "store_id": "hx-cq-na",
+      "question": "10月25日红玫销量最高的是哪款",
+      "why": "相同业务语义应保留相同门店、商品集合、日期和执行事项；缺时间只追问时间。",
+      "expected": {
+        "status": "ready",
+        "parsed": {
+          "intent": "query_sales_performance",
+          "target_date": "2026-10-25",
+          "query_plan.ranking.direction": "desc",
+          "query_plan.ranking.group_by": "sku",
+          "product_resolution.constraints.varieties": [
+            "红玫瑰"
+          ]
+        }
+      }
+    },
+    {
+      "id": "paraphrase-ranking-3",
+      "split": "regression",
+      "family": "paraphrase-ranking",
+      "paraphrase_group": "paraphrase-ranking",
+      "category": "同义问法一致性",
+      "execution": "model_allowed",
+      "store_id": "hx-cq-na",
+      "question": "红玫瑰10月25日哪款最受欢迎",
+      "why": "相同业务语义应保留相同门店、商品集合、日期和执行事项；缺时间只追问时间。",
+      "expected": {
+        "status": "ready",
+        "parsed": {
+          "intent": "query_sales_performance",
+          "target_date": "2026-10-25",
+          "query_plan.ranking.direction": "desc",
+          "query_plan.ranking.group_by": "sku",
+          "product_resolution.constraints.varieties": [
+            "红玫瑰"
+          ]
+        }
+      }
     }
   ],
   "manual_review_rubric": [

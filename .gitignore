@@ -34,7 +34,7 @@ config.local.json.tmp
 *.p12
 *.pfx
 
-# 个人材料（面试稿等），不随开源仓库发布
+# 本地笔记与辅助材料
 notes/
 *.docx
 *.bak
@@ -42,6 +42,10 @@ notes/
 ~$*
 .workbuddy/
 scripts/append_interview_*.py
+scripts/sync_interview_wiki.py
+/docs/第*步-*.md
+/docs/学习与架构说明.md
+/docs/验证记录.md
 .venv/
 venv/
 .coverage

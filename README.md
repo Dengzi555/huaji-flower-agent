@@ -4,6 +4,14 @@
 
 **技术栈**　Python 3.11+、SQLite、原生 JavaScript、Tool Calling、DeepSeek API（可选）、unittest。Web 工作台使用 Python 标准库，启动时无需前端构建或 Docker。
 
+## 界面预览
+
+花迹调查工作台可按前一日、前两日和上周同日比较商品销量，并查看调查范围与数据来源。
+
+![花迹调查工作台的销量对比卡片与趋势图](docs/screenshots/huaji-sales-trend-hd.png)
+
+[查看完整调查工作台高清图](docs/screenshots/huaji-investigation-hd.png)
+
 ## 业务流程
 
 ```mermaid

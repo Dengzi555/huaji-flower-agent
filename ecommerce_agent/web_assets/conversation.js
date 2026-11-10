@@ -1,8 +1,8 @@
 /* 对话UI只展示服务端状态，不自行拼接商品/日期或把历史指标塞给新任务。 */
 let comparisonPollTimer=null;
-async function startConversation(){
+async function startConversation(storeId=currentStore){
   if(!meta?.capabilities.conversation_state){conversation=null;conversationId=null;renderConversation();return;}
-  const result=await api('/api/conversations',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({store_id:currentStore})});
+  const result=await api('/api/conversations',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({store_id:storeId})});
   conversation=result.conversation;conversationId=conversation.id;sessionStorage.setItem('flower-conversation-id',conversationId);renderConversation();
 }
 async function restoreConversation(){

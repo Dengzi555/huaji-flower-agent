@@ -70,13 +70,19 @@ class TaskRepository:
         if row and row['request_hash']!=digest:raise ConflictError('同一个幂等键不能用于不同的问题。')
         return row['id'] if row else None
 
-    def parent_candidates(self,db,parent_id,question):
-        """父任务必须属于本仓库；仅复用待确认意图候选，不继承指标。"""
-        if not parent_id:return None
-        row=db.execute('SELECT question,parsed_json FROM tasks WHERE id=?',(parent_id,)).fetchone()
-        if not row:raise ValueError('原任务不存在。')
-        route=json.loads(row['parsed_json']).get('routing',{})
-        return route.get('candidates',[]) if row['question']==question and route.get('status')=='needs_clarification' else None
+    def parent_context(self, db, parent_id, question):
+        """校验父任务归属，返回可复用的意图候选和角色 ID。"""
+        if not parent_id:
+            return None, None
+        row = db.execute('SELECT question,parsed_json FROM tasks WHERE id=?', (parent_id,)).fetchone()
+        if not row:
+            raise ValueError('原任务不存在。')
+        parsed = json.loads(row['parsed_json'])
+        route = parsed.get('routing', {})
+        candidates = None
+        if row['question'] == question and route.get('status') == 'needs_clarification':
+            candidates = route.get('candidates', [])
+        return candidates, parsed.get('role')
 
     def insert(self,db,task_id,payload,prepared,key,digest):
         """任务索引与数据快照同事务写入；只有提交成功，调用者才可以入队。"""

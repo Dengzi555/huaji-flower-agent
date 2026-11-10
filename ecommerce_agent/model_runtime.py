@@ -5,12 +5,14 @@
 """
 import contextvars
 import json
+import logging
 import threading
 import time
 from contextlib import contextmanager
 from dataclasses import dataclass
 from .errors import AgentError
 
+LOGGER = logging.getLogger(__name__)
 FIELDS=('prompt_tokens','completion_tokens','total_tokens')
 _ledger=contextvars.ContextVar('flower_model_ledger',default=None)
 
@@ -18,9 +20,9 @@ _ledger=contextvars.ContextVar('flower_model_ledger',default=None)
 @dataclass(frozen=True)
 class ModelPolicy:
     """宿主资源上限；调用者可收紧，不能由用户问题或记忆修改。"""
-    context_units:int=48000
+    context_units:int=64_000
     max_calls:int=16
-    max_estimated_tokens:int=240000
+    max_estimated_tokens:int=320_000
 
     def __post_init__(self):
         if any(type(v) is not int or v<=0 for v in (self.context_units,self.max_calls,self.max_estimated_tokens)):
@@ -54,7 +56,14 @@ def prepare_messages(messages,tools,output_limit,policy):
     receipt={'estimate_method':'utf8_bytes_upper_estimate_v1','before_units':before,'input_units':size()-output_limit,
         'reserved_output_tokens':output_limit,'after_units':size(),'removed_messages':removed,
         'context_limit_units':policy.context_units}
-    if size()>policy.context_units:raise AgentError('model_context_limit',phase='context')
+    if receipt['after_units'] > policy.context_units:
+        LOGGER.warning(
+            '模型上下文超限：估算=%d，上限=%d，工具定义=%d，工具回执=%d，输出预留=%d，消息数=%d',
+            receipt['after_units'], policy.context_units, estimate(tools),
+            sum(estimate(m) for m in selected if m.get('role') == 'tool'),
+            output_limit, len(selected),
+        )
+        raise AgentError('model_context_limit',phase='context')
     return selected,receipt
 
 

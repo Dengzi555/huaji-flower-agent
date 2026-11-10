@@ -121,6 +121,18 @@ class DataStore:
                             raise ValueError(f"{table}: invalid type for {field}")
                         if type(value) in (int, float) and (not math.isfinite(value) or value < 0):
                             raise ValueError(f"{table}: {field} must be finite and non-negative")
+                    if table == 'promotions':
+                        # 小时级到期与资源位均为可选原始字段，旧日报仍有效。
+                        if 'resource_slot_active' in row and type(row['resource_slot_active']) is not bool:
+                            raise ValueError('promotions: invalid resource_slot_active')
+                        if 'campaign_ended_at' in row:
+                            value = row['campaign_ended_at']
+                            if not isinstance(value, str):
+                                raise ValueError('promotions: invalid campaign_ended_at')
+                            ended = datetime.fromisoformat(value)
+                            if (ended.utcoffset() != timedelta(hours=8) or ended.date().isoformat() != row['date']
+                                    or ended > observed or not row['campaign_name']):
+                                raise ValueError('promotions: campaign expiry must match the observed business day')
                     if table == "inventory" and not (0 < row["monitored_minutes"] <= 1440
                             and row["out_of_stock_minutes"] <= row["monitored_minutes"]):
                         raise ValueError("Invalid inventory observation window")

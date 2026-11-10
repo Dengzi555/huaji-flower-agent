@@ -168,6 +168,9 @@ def create_server(service, host="127.0.0.1", port=8080, token="", public_hosts=(
                      "/trace.css": ("trace.css", "text/css; charset=utf-8"),
                      "/trend.js": ("trend.js", "text/javascript; charset=utf-8"),
                      "/trend.css": ("trend.css", "text/css; charset=utf-8"),
+                     "/approval-drafts.js": ("approval-drafts.js", "text/javascript; charset=utf-8"),
+                     "/operations-board.js": ("operations-board.js", "text/javascript; charset=utf-8"),
+                     "/operations-board.css": ("operations-board.css", "text/css; charset=utf-8"),
                      "/imports.js": ("imports.js", "text/javascript; charset=utf-8"),
                      "/imports.css": ("imports.css", "text/css; charset=utf-8"),
                      "/style.css": ("style.css", "text/css; charset=utf-8"),
@@ -267,6 +270,20 @@ def create_server(service, host="127.0.0.1", port=8080, token="", public_hosts=(
                     day=parse_qs(urlsplit(self.path).query).get("date",[active.meta()["available_dates"][-1]])[0]
                     self.send(200,overview(service,day))
                 except (ValueError,IndexError) as error:self.send(400,{"error":str(error)})
+            elif path == "/api/schedule-plans":
+                self.send(200, {'plans': active.board.list_plans()})
+            elif path == "/api/schedule":
+                month = parse_qs(urlsplit(self.path).query, keep_blank_values=True).get('month', [None])[0]
+                try:
+                    self.send(200, active.board.month(month))
+                except ValueError as error:
+                    self.send(400, {'error': str(error)})
+            elif path == "/api/approval-drafts":
+                self.send(200, {'drafts': active.approval_drafts.list_pending()})
+            elif path == "/api/risk-alerts":
+                self.send(200, active.board.alerts())
+            elif path == "/api/approval-policy":
+                self.send(200, {"policy": active.operations.approval_policy()})
             elif path=="/api/settings":self.send(200,{"settings":active.operations.settings()})
             elif path=="/api/followups":self.send(200,{"followups":active.operations.list()})
             elif match:=re.fullmatch(r"/api/followups/([a-f0-9]{32})",path):
@@ -335,9 +352,10 @@ def create_server(service, host="127.0.0.1", port=8080, token="", public_hosts=(
             cancel_request=re.fullmatch(r'/api/conversations/([a-f0-9]{32})/cancel',path)
             cancel_task=re.fullmatch(r'/api/tasks/([a-f0-9]{32})/cancel',path)
             import_action=re.fullmatch(r'/api/imports/([a-f0-9]{32})/(preview|commit|cancel)',path)
+            approval_draft_action = re.fullmatch(r'/api/approval-drafts/([a-f0-9]{32})/decision', path)
             decision_task=re.fullmatch(r'/api/tasks/([a-f0-9]{32})/decision',path)
             decision_action=re.fullmatch(r'/api/decisions/([a-f0-9]{32})/(approve|reject|execute)',path)
-            if path not in ("/api/eval/jobs","/api/tasks","/api/missions","/api/memory","/api/followups","/api/settings","/api/model-settings","/api/model-test","/api/store-context","/api/conversations","/api/imports/upload") and not eval_action and not review_action and not mission_action and not memory_action and not followup_action and not context_action and not conflict_action and not conversation_action and not import_action and not cancel_request and not cancel_task and not decision_task and not decision_action:
+            if path not in ("/api/eval/jobs","/api/tasks","/api/schedule","/api/missions","/api/memory","/api/followups","/api/settings","/api/approval-policy","/api/model-settings","/api/model-test","/api/store-context","/api/conversations","/api/imports/upload") and not eval_action and not review_action and not mission_action and not memory_action and not followup_action and not context_action and not conflict_action and not conversation_action and not import_action and not cancel_request and not cancel_task and not decision_task and not decision_action and not approval_draft_action:
                 self.send(404, {"error": "接口不存在。"})
                 return
             if not self.allowed():
@@ -372,6 +390,8 @@ def create_server(service, host="127.0.0.1", port=8080, token="", public_hosts=(
                     if payload!={}:raise ValueError('停止任务不接受额外参数。')
                     if not active.get(cancel_task[1],include_events=False):self.send(404,{'error':'当前门店不存在该任务。'});return
                     self.send(200,active.cancel(cancel_task[1]))
+                elif approval_draft_action:
+                    self.send(200, {'draft': active.approval_drafts.decide(approval_draft_action[1], payload)})
                 elif decision_task:
                     self.send(200,{'decision':active.decisions.propose(decision_task[1])})
                 elif decision_action:
@@ -425,12 +445,16 @@ def create_server(service, host="127.0.0.1", port=8080, token="", public_hosts=(
                     result=active.context_memory.propose(payload);self.send(200 if result['reused'] else 201,result)
                 elif context_action:self.send(200,{'memory':active.context_memory.action(context_action[1],payload)})
                 elif conflict_action:self.send(200,active.context_memory.resolve(conflict_action[1],payload))
+                elif path == "/api/approval-policy":
+                    self.send(200, {"policy": active.operations.save_approval_policy(payload)})
                 elif path=="/api/settings":self.send(200,{"settings":active.operations.save_settings(payload)})
                 elif path=="/api/followups":
                     result=active.operations.create(payload);self.send(200 if result["reused"] else 201,result)
                 elif followup_action:
                     method=active.operations.action if followup_action[2]=="action" else active.operations.recheck
                     self.send(200,{"followup":method(followup_action[1],payload)})
+                elif path == "/api/schedule":
+                    self.send(201, {'plan': active.board.add_plan(payload)})
                 elif path=="/api/missions": self.send(201,{"mission":active.missions.create(payload)})
                 elif path=="/api/memory": self.send(201,{"memory":active.memory.create(payload)})
                 elif mission_action:

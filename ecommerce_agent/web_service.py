@@ -24,6 +24,9 @@ from .decisions import Decisions, SCHEMA as DECISION_SCHEMA
 from .cancellation import current_token,checkpoint
 from .model_runtime import model_scope
 from .task_admission import prepare_task,validate_request
+from .operations_board import OperationsBoard, initialize_board
+from .approval_drafts import ApprovalDrafts, SCHEMA as APPROVAL_DRAFTS_SCHEMA
+from .investigation_worker import freeze_context, run_in_worker
 from .task_repository import TaskRepository,ConflictError
 from .task_execution import TaskExecutor
 
@@ -58,6 +61,8 @@ class InvestigationService:
             db.executescript(CONTEXT_SCHEMA)
             db.executescript(IMPORT_SCHEMA)
             db.executescript(DECISION_SCHEMA)
+            db.executescript(APPROVAL_DRAFTS_SCHEMA)
+            initialize_board(db)
             current=db.execute('SELECT document,catalog,fingerprint FROM workspace_versions ORDER BY rowid DESC LIMIT 1').fetchone()
             if current:
                 self.store=DataStore.from_document(json.loads(current['document']))
@@ -67,6 +72,7 @@ class InvestigationService:
             self.imports=DataImports(self)
             self.reviews = ReviewCases(self)
             self.decisions = Decisions(self)
+            self.approval_drafts = ApprovalDrafts(self)
             self.missions, self.memory = Missions(self), StoreMemory(self)
             self.operations=StoreOperations(self)
             self.context_memory=ContextMemory(self)
@@ -79,10 +85,18 @@ class InvestigationService:
             for row in db.execute("SELECT r.task_id FROM mission_runs r JOIN missions m ON m.id=r.mission_id JOIN tasks t ON t.id=r.task_id WHERE m.status='running' AND t.status NOT IN ('queued','running')").fetchall():
                 self.missions.settled(db,row[0])
         self.executor=TaskExecutor(self.repository,self.output,
-            execute=lambda *args,**kwargs:self.runner(*args,**kwargs),default_store=lambda:self.store,
+            execute=self._run_task,default_store=lambda:self.store,
             settings=lambda:self.model_settings,can_start=self._can_start,on_skipped=self._on_skipped,
             on_result=self._on_result,on_failure=self._on_failure)
         self.executor.start(pending,enabled=start_worker)
+        self.board = OperationsBoard(self, start_worker=start_worker)
+
+    def _run_task(self, *args, **kwargs):
+        """已准入的销量暴跌调查进入子进程，沿用原有任务终态和队列管理。"""
+        task = kwargs['task_context']
+        if self.runner is run and task.get('investigation_context'):
+            return run_in_worker(*args, **kwargs)
+        return self.runner(*args, **kwargs)
 
     def connection(self):
         """兼容业务扩展入口；连接生命周期由任务仓库统一管理。"""
@@ -126,7 +140,10 @@ class InvestigationService:
         with self.connection() as db:
             existing=self.repository.replay(db,idempotency_key,request_hash)
             if existing:return {'task':self.get(existing,include_events=False),'reused':True}
-            confirmed_candidates=self.repository.parent_candidates(db,payload.get('parent_id'),question)
+            confirmed_candidates, parent_role = self.repository.parent_context(db, payload.get('parent_id'), question)
+        # 补充问题或复查延续父任务角色；明确提交的新角色仍按准入规则校验。
+        if parent_role is not None and 'role' not in payload:
+            payload = {**payload, 'role': parent_role}
         active_store,active_catalog,fingerprint=self.dataset()
         prepared=prepare_task(payload,_store or active_store,_catalog or active_catalog,fingerprint,
             settings=self.model_settings,classifier=self.route_classifier,planner=self.query_planner,
@@ -135,6 +152,10 @@ class InvestigationService:
         parsed=prepared.parsed
         fingerprint=prepared.fingerprint
         parsed['operating_settings_snapshot']=self.operations.settings()
+        external = freeze_context(parsed, _store or active_store, self.operations.book,
+                                  self.database.parent / 'investigation_context.json')
+        if external is not None:
+            parsed['investigation_context'] = external
         if _review:
             # “昨天”按原任务锚点解释，不能在数日后复查时悄悄换调查日期。
             parsed["recheck_context"] = {"case_id": _review[0], "requested_at": utc_now(),
@@ -152,7 +173,7 @@ class InvestigationService:
                     raise ReviewConflict("本工单最多进行 3 次复查，请整理问题后新建调查。")
             existing=self.repository.replay(db,idempotency_key,request_hash)
             if existing:return {'task':self.get(existing,include_events=False),'reused':True}
-            self.repository.parent_candidates(db,payload.get('parent_id'),question)
+            self.repository.parent_context(db, payload.get('parent_id'), question)
             if _mission and status!="queued":
                 raise MissionConflict("Mission续跑需要明确商品、日期与可用数据，请先在经营调查中补齐条件。")
             if status=='queued':self.repository.check_capacity(db)
@@ -254,6 +275,7 @@ class InvestigationService:
 
     def close(self):
         """应用关闭交给执行器收尾；不改变历史任务和数据版本。"""
+        self.board.close()
         self.executor.close()
 
     def _can_start(self,db,task_id):

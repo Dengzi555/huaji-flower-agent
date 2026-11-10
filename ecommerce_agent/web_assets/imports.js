@@ -7,8 +7,7 @@ function invalidateImport(){importPreview=null;$('import-commit').disabled=true;
 async function loadImports(){
   const epoch=++importEpoch,container=$('imports-view');importStage=null;importPreview=null;
   container.replaceChildren();
-  const heading=node('div','ad-heading'),intro=node('div');intro.append(node('p','eyebrow','HUAJI / DATA WORKSPACE'),node('h1','','把后台报表，变成经营线索。'),
-    node('p','','直接上传平台导出的整批报表。第一次匹配列名，之后复用映射；无需逐个商品填表。'));heading.append(intro);container.append(heading);
+  const heading=node('div','ad-heading'),intro=node('div');intro.append(node('h1','','数据导入'));heading.append(intro);container.append(heading);
   try{const schema=await api('/api/imports/schema');if(epoch!==importEpoch||activeModule!=='imports')return;importSchema=schema;
     const scope=node('p','import-scope',`当前导入门店：${storeDirectory.find(s=>s.id===currentStore)?.name||'本店'}。文件有门店列时会逐行核对，不会分配到其他店。`);container.append(scope);
     const form=node('section','import-panel'),row=node('div','import-upload-row');

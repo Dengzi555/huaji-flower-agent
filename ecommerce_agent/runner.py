@@ -11,11 +11,13 @@ import uuid
 from datetime import date, datetime, timezone
 from pathlib import Path
 
-from .tools import SCHEMAS, TABLES, ToolRegistry
+from .tools import ACTIVITY_TOOL, SCHEMAS, TABLES, ToolRegistry
 from .follow_up import analyze_channels
 from .verification import observation_assertions, verify_assertions
 from .operating_guidance import build_guidance,guidance_markdown
 from .capabilities import validate_plan
+from .errors import AgentError
+from .roles import get_role, require_role_tool
 from .cancellation import checkpoint,current_token,CancelledError,cancel_state,cancellable_call
 from .model_runtime import model_scope,current_ledger,prepare_messages
 from .model_deadlines import TIMEOUTS,INVESTIGATION_SECONDS,deadline_scope
@@ -111,8 +113,12 @@ def _run(store, sku_id, day, output, provider=None, max_steps=16, timeout_second
     directory.mkdir(parents=True)
     scope={'start':task_context['trend_start'],'end':task_context['trend_end'],
            'listed_at':next((p.get('listed_at') for p in task_context.get('candidates',[]) if p['sku_id']==sku_id),None)} if task_context and task_context.get('include_trend') else None
-    include_orders=bool(task_context and task_context.get('include_order_funnel'))
-    registry = ToolRegistry(store, sku_id, day, allow_follow_up=adaptive and provider is None,allow_orders=include_orders,
+    role = get_role(task_context['role']) if task_context and 'role' in task_context else None
+    include_orders = bool(task_context and task_context.get('include_order_funnel'))
+    # 订单批次是可选补充证据，有数据也不能扩大角色权限。
+    if role is not None and 'get_order_funnel' not in role.allowed_tools:
+        include_orders = False
+    registry = ToolRegistry(store, sku_id, day, role=role, allow_follow_up=adaptive and provider is None,allow_orders=include_orders,
         product_context=task_context.get('product_context') if task_context else None,
         comparison_day=task_context.get('comparison_date') if task_context else None,trend_scope=scope)
     state = {"run_id": run_id, "sku_id": sku_id, "target_date": day, "status": "running",
@@ -125,7 +131,10 @@ def _run(store, sku_id, day, output, provider=None, max_steps=16, timeout_second
         write_json(directory / "request.json", task_context)
     state["intent"] = task_context["intent"] if task_context else "investigate_sales_change"
     started = time.monotonic()
-    messages = [{"role": "system", "content": PROMPT}, {"role": "user", "content": json.dumps({
+    system_prompt = PROMPT
+    if role is not None:
+        system_prompt += f"\n当前角色：{role.name}。默认任务：{role.default_task}"
+    messages = [{"role": "system", "content": system_prompt}, {"role": "user", "content": json.dumps({
         "sku_id": sku_id, "target_date": day, "sample_data": store.meta["sample_data"],
         "task": "调查该 SKU 的日销量变化，核对四类数据并说明证据和待查事项。",
         **({"parsed_request": task_context} if task_context else {})}, ensure_ascii=False)}]
@@ -167,6 +176,10 @@ def _run(store, sku_id, day, output, provider=None, max_steps=16, timeout_second
                 'instruction':'这些为本地只读工具已取回的趋势/日历/支付订单批次证据。结合背景审慎分析；不将相关性当因果。finish应引用所有已取回的证据。'},ensure_ascii=False)})
         if provider is None:
             # 这是程序安排的工作流，不是模型自主选择工具，演示时要明确区分。
+            if ACTIVITY_TOOL in registry.allowed_tools:
+                observation = execute(ACTIVITY_TOOL, {'sku_id': sku_id, 'date': day}, 'activity-source')
+                if not observation['ok']:
+                    raise ValueError(observation['error'])
             for index, name in enumerate(TABLES, 1):
                 result = execute(name, {}, f"source-{index}")
                 if not result["ok"]:
@@ -174,7 +187,7 @@ def _run(store, sku_id, day, output, provider=None, max_steps=16, timeout_second
             result = execute("analyze_metrics", {}, "analysis-1")
             if not result["ok"]:
                 raise ValueError(result["error"])
-            if adaptive:
+            if adaptive and "get_channel_breakdown" in registry.allowed_tools:
                 analysis = registry.analysis
                 if analysis["conflicts"]:
                     reason = "基础证据冲突，停止自动深挖，优先核对口径。"
@@ -247,6 +260,16 @@ def _run(store, sku_id, day, output, provider=None, max_steps=16, timeout_second
                 if any(not isinstance(identity, str) or not identity or identity in seen for identity in batch_ids) or len(set(batch_ids)) != len(batch_ids):
                     raise ValueError("Missing or duplicate tool call ID")
                 seen.update(batch_ids)
+                if role is not None:
+                    # 整批先检查，防止越权请求与合法调用混在一起被部分执行。
+                    for call in calls:
+                        name = call["function"]["name"]
+                        try:
+                            require_role_tool(role, name)
+                        except AgentError as error:
+                            event("tool_rejected", call_id=call["id"],
+                                  result={"ok": False, "error": str(error)}, error_info=error.public())
+                            raise
                 for call in calls:
                     checkpoint()
                     call_id = call["id"]
@@ -295,7 +318,7 @@ def _run(store, sku_id, day, output, provider=None, max_steps=16, timeout_second
         from .errors import from_exception
         problem=from_exception(error,phase='execution',fallback='execution_failed').public()
         state.update(status=problem['status'] if problem['category']=='resource' else 'failed',
-            stop_reason=problem['code'] if problem['category']=='resource' else 'execution_error',error=problem['message'],error_info=problem)
+            stop_reason=problem['code'] if problem['category'] in ('resource','permission') else 'execution_error',error=problem['message'],error_info=problem)
     finally:
         if current_token() and current_token().event.is_set():cancel_state(state)
         # 无论模型失败、用户中断还是预算用尽，都尽量输出状态和已有证据。
@@ -310,6 +333,8 @@ def _run(store, sku_id, day, output, provider=None, max_steps=16, timeout_second
         state['sales_trend']=registry.observations.get('sales_trend',{}).get('data')
         state['calendar_context']=registry.observations.get('calendar',{}).get('data')
         state['order_funnel']=registry.observations.get('order_cohorts',{}).get('data')
+        if 'activity_status' in registry.observations:
+            state['activity_status'] = registry.observations['activity_status']
         state["model_draft"] = registry.finished if state['status']!='cancelled' else None
         state["validation"] = (registry.finished["verification"] if registry.finished else
             verify_assertions(registry.observations, observation_assertions(registry.observations)))
@@ -370,6 +395,22 @@ def write_report(directory, state, evidence):
         lines.append(f"- 缺口：{gap['table']} — {gap['reason']}")
     for conflict in analysis.get("conflicts", []):
         lines.append(f"- 冲突：{conflict['kind']} — {', '.join(conflict['evidence_ids'])}")
+    if activity := state.get('activity_status'):
+        data = activity['data']
+        before, current = data['records']
+        lines += ['', '## 活动状态检查', f"- 证据：{activity['evidence_id']}"]
+        if data['expired_without_renewal']:
+            lines.append(f"- 「{before['campaign_name']}」于 {data['campaign_ended_at']} 到期；"
+                         f"{current['date']} 满减未续接。活动断档，需尽快联系运营续报。")
+        if data['resource_slot_lost']:
+            lines.append('- 资源位由在位变为不在位，需联系运营核实撤位或续报。')
+        if not data['observation_complete']:
+            lines.append('- 活动记录缺失或延迟，是否断档待核实。')
+        elif not data['expired_without_renewal'] and not data['resource_slot_lost']:
+            lines.append('- 当前记录未证实活动断档或资源位撤下。')
+        lines.append('- 活动断档是销量下降的优先核查线索，仍需结合流量、库存和时段销量判断。'
+                     if data['expired_without_renewal'] or data['resource_slot_lost'] else
+                     '- 当前记录无法用于认定销量下降原因。')
     lines += ["", "## 调查假设（不是确定根因）", ""]
     for item in analysis.get("hypotheses", []):
         lines += [f"- **{item['id']}**：{item['text']}",

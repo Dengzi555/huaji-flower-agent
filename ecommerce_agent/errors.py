@@ -14,6 +14,7 @@ DEFINITIONS={
     'needs_information':('needs_clarification','information','需要补充信息','请补充必要的查询条件。',False,'clarify','补充信息'),
     'data_missing':('needs_data','data','缺少业务数据','所选范围缺少可用业务数据，请查看数据来源与覆盖情况。',False,'view_sources','查看来源数据'),
     'capability_unsupported':('unsupported','capability','当前能力不支持','当前查询能力尚未接入，不能用其他数据代答。',False,'edit_question','修改问题'),
+    'role_tool_denied':('failed','permission','角色工具权限不足','当前角色无权调用该工具，任务已停止。',False,'edit_question','检查角色和任务范围'),
     'permission_denied':('unsupported','permission','不支持此操作','当前助手只支持经营查询，不能执行改价、退款等操作。',False,'edit_question','修改问题'),
     'model_not_configured':('failed','configuration','模型尚未配置','请在账号与API设置中启用模型并配置密钥。',False,'open_settings','检查模型设置'),
     'model_authentication':('failed','configuration','模型鉴权失败','模型服务拒绝了当前凭据，请检查API密钥和账号权限。',False,'open_settings','检查模型设置'),

@@ -117,9 +117,19 @@ def business_data():
             data["traffic"].append({**common, "source_id": "flower-traffic-daily", **(
                 {"status": "delayed", "reason": "流量日报尚未完成回传"} if delayed else {"visitors": visitors})})
             if not (sku == "FLR-ROSE-33-BUCKET" and day in ("2026-10-23", "2026-10-25")):
+                quantities = {"stock_on_hand": 2, "safety_stock": 8} if (
+                    sku == "FLR-ROSE-99-BOUQUET" and day == "2026-10-25") else {}
                 data["inventory"].append({**common, "source_id": "flower-availability-daily",
-                    "out_of_stock_minutes": stockout, "monitored_minutes": monitored})
-            data["promotions"].append({**common, "source_id": "flower-campaign-daily", "active": active, "campaign_name": campaign})
+                    "out_of_stock_minutes": stockout, "monitored_minutes": monitored, **quantities})
+            activity = {}
+            if sku == "FLR-ROSE-99-BOUQUET" and day == "2026-10-24":
+                active, campaign = True, "情人节大促满减"
+                activity = {"campaign_ended_at": "2026-10-24T18:00:00+08:00", "resource_slot_active": True}
+            elif sku == "FLR-ROSE-99-BOUQUET" and day == "2026-10-25":
+                active, campaign = False, ""
+                activity = {"resource_slot_active": False}
+            data["promotions"].append({**common, "source_id": "flower-campaign-daily", "active": active,
+                                       "campaign_name": campaign, **activity})
             if not delayed:
                 search = int(visitors * rng.uniform(.38, .59))
                 ads = int(visitors * rng.uniform(.12, .29))

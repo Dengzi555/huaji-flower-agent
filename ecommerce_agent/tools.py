@@ -14,6 +14,8 @@ from .order_funnel import order_funnel
 from .assessment import assess
 from .operating_guidance import build_guidance
 from .capabilities import CAPABILITIES
+from .roles import require_role_tool
+from .data import previous_day
 from .group_sales import group_sales
 from .narrative_contract import build_contract,audit_summary
 from datetime import date,timedelta
@@ -48,6 +50,14 @@ SCHEMAS += [definition('get_sales_trend','Read fixed SKU daily sales series and 
 SCHEMAS += [definition('get_order_funnel','Read paid-date order cohorts for fixed SKU and two dates as of observed_at. Cancelled/completed/pending are exclusive states; late cancellations belong to original paid date. Never infer refunds or causality.')]
 SCHEMAS += [definition('get_product_group_sales','Read frozen product-group members and dates. Sum item units and allocated revenue only with complete coverage; never sum distinct visitors, buyers or order counts.')]
 # 只在广告专项注册表授权执行；销量任务不会因列出说明而获得推广账本权限。
+ACTIVITY_TOOL = 'check_activity_status'
+SCHEMAS.append(definition(
+    ACTIVITY_TOOL,
+    'Check the frozen SKU on the investigation date and previous calendar day for discount expiry and resource-slot loss. Missing status is unknown.',
+    {'sku_id': {'type': 'string'}, 'date': {'type': 'string', 'format': 'date'}},
+    ['sku_id', 'date'],
+))
+
 ADVERTISING_SCHEMA=definition('get_advertising_report','Read a frozen store/day paid advertising ledger. Store revenue is NOT attributed ad revenue; never infer ROI or profit.')
 ADVERTISING_SETTINGS_SCHEMA=definition('get_advertising_settings','Read local operating attention thresholds and hours for the frozen store. This is NOT platform budget, bid or live campaign configuration.')
 INVENTORY_RANGE_SCHEMA=definition('get_inventory_range','Read frozen product members and dates for daily stockout monitoring. Missing stays unknown; SKU-day minutes are not store elapsed time.')
@@ -57,9 +67,28 @@ next(schema for schema in SCHEMAS if schema['function']['name']=='finish')['func
     'cohort_paid_orders','cancelled_orders','completed_orders','pending_orders','late_cancelled_orders']
 
 
+def check_activity_status(store, sku_id, day):
+    """查询指定商品调查日和前一自然日，返回原始来源与可核实的活动状态。"""
+    data = store.query('promotions', sku_id, day, comparison_day=previous_day(day))
+    before, current = data['records']
+    both_observed = before['status'] == current['status'] == 'ok'
+    expired = before.get('campaign_ended_at') if before['status'] == 'ok' else None
+    expired_without_renewal = both_observed and bool(expired) and current.get('active') is False
+    slot_lost = (both_observed and before.get('resource_slot_active') is True
+                 and current.get('resource_slot_active') is False)
+    data.update(
+        table='activity_status',
+        campaign_ended_at=expired,
+        expired_without_renewal=expired_without_renewal,
+        resource_slot_lost=slot_lost,
+        observation_complete=both_observed,
+    )
+    return data
+
+
 class ToolRegistry:
     """单次调查的工具与证据容器，不跨会话共享 SKU、分析结果或完成状态。"""
-    def __init__(self, store, sku_id, day, *, allowed_tools=None, allow_follow_up=False,comparison_day=None,trend_scope=None,allow_orders=False,product_context=None,group_scope=None,group_products=None):
+    def __init__(self, store, sku_id, day, *, allowed_tools=None, allow_follow_up=False,comparison_day=None,trend_scope=None,allow_orders=False,product_context=None,group_scope=None,group_products=None,role=None):
         """宿主在创建时冻结 SKU/日期，后续模型工具只能查询这个调查对象。"""
         self.store, self.sku_id, self.day = store, sku_id, day
         self.observations = {}
@@ -75,6 +104,11 @@ class ToolRegistry:
             self.allowed_tools.add(FOLLOW_UP_TOOL)
         if trend_scope:self.allowed_tools.update({'get_sales_trend','get_calendar_context'})
         if allow_orders:self.allowed_tools.add('get_order_funnel')
+        if role is not None and allowed_tools is None and ACTIVITY_TOOL in role.allowed_tools:
+            self.allowed_tools.add(ACTIVITY_TOOL)
+        self.role = role
+        if role is not None:
+            self.allowed_tools.intersection_update(role.allowed_tools)
         # 注册表保留原有按需开关；能力目录是额外上界，列入目录不等于本轮全部授予。
         contract_tools={name for spec in CAPABILITIES.values() for name in spec['tools']}
         if self.allowed_tools-contract_tools:raise ValueError('工具授权包含能力目录之外的名称。')
@@ -85,16 +119,25 @@ class ToolRegistry:
         checkpoint()
         if call_id in self.results:
             raise ValueError("Duplicate tool call ID")
+        # 角色拒绝是硬错误，不能被下方可纠正的参数错误捕获并交回模型重试。
+        if self.role is not None:
+            require_role_tool(self.role, name)
         verification=None;narrative_audit=None
         try:
             if name not in self.allowed_tools:
                 raise ValueError("Unknown tool; only read-only investigation tools are available")
             if not isinstance(arguments, dict):
                 raise ValueError("Arguments must be a JSON object")
-            expected = {"summary", "evidence_ids"} if name == "finish" else set()
+            expected = ({"summary", "evidence_ids"} if name == "finish" else
+                        {"sku_id", "date"} if name == ACTIVITY_TOOL else set())
             if set(arguments) != expected and not (name == "finish" and set(arguments) == expected | {"assertions"}):
                 raise ValueError("Arguments do not match the tool contract")
-            if name=='get_product_group_sales':
+            if name == ACTIVITY_TOOL:
+                # 日期取调查日，前一天由宿主计算，不能由模型换商品或扩大范围。
+                if arguments != {'sku_id': self.sku_id, 'date': self.day}:
+                    raise ValueError('活动检查的商品与日期必须匹配冻结任务。')
+                data = check_activity_status(self.store, self.sku_id, self.day)
+            elif name=='get_product_group_sales':
                 if not self.group_scope or not self.trend_scope:raise ValueError('需要宿主冻结商品集合与日期。')
                 data=group_sales(self.store,self.group_scope,self.trend_scope['start'],self.trend_scope['end'],self.comparison_day,self.group_products)
             elif name in ('get_sales_trend','get_calendar_context'):
@@ -143,6 +186,8 @@ class ToolRegistry:
                 self.analysis['narrative_contract']=build_contract(self.analysis,self.observations)
                 data = self.analysis
             else:
+                if ACTIVITY_TOOL in self.allowed_tools and 'activity_status' not in self.observations:
+                    raise ValueError('商品调查必须先调用 check_activity_status，再提交结论。')
                 if self.analysis is None:
                     raise ValueError("Run analyze_metrics before finish")
                 summary, refs = arguments["summary"], arguments["evidence_ids"]
@@ -167,7 +212,7 @@ class ToolRegistry:
                       "retrieved_at": datetime.now(timezone.utc).isoformat(), "data": data}
             if name in TABLES:
                 self.observations[TABLES[name]] = result
-            elif name in ('get_sales_trend','get_calendar_context','get_order_funnel','get_product_group_sales'):self.observations[data['table']]=result
+            elif name in (ACTIVITY_TOOL,'get_sales_trend','get_calendar_context','get_order_funnel','get_product_group_sales'):self.observations[data['table']]=result
             elif name == FOLLOW_UP_TOOL:
                 self.observations["traffic_channels"] = result
         except CancelledError:

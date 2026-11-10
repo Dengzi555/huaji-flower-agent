@@ -36,7 +36,7 @@ CAPABILITIES={
         'failure_policy':'只比较同范围末日；不把日对比包装为窗口环比'},
     'investigate_sales_change':{'intents':['investigate_sales_change'],'scopes':['single'],
         'requires':['sales','traffic','inventory','promotions'],'produces':['事实','候选线索','缺口/冲突','关注判断','排查顺序'],
-        'tools':['get_sales_metrics','get_traffic_metrics','get_inventory_status','get_promotion_history','get_sales_trend','get_calendar_context','get_order_funnel','get_channel_breakdown','analyze_metrics','finish'],
+        'tools':['get_sales_metrics','get_traffic_metrics','get_inventory_status','get_promotion_history','get_sales_trend','get_calendar_context','get_order_funnel','get_channel_breakdown','check_activity_status','analyze_metrics','finish'],
         'parameters':[],'failure_policy':'保留已读证据；冲突先核对，不把相关性认定为根因'},
     'inventory_status':{'intents':['query_inventory'],'scopes':['single'],'requires':['inventory'],
         'produces':['缺货分钟','监测分钟'],'tools':['get_inventory_status'],'parameters':[],

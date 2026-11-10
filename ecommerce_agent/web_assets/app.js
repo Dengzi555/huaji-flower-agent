@@ -25,7 +25,6 @@ let currentStore = localStorage.getItem("flower-store-id") || "", storeEpoch = 0
 let queryStoreScope=localStorage.getItem('flower-query-scope')==='all'?'all':'current';
 function syncStoreWindow(){
   $('store-select').value=queryStoreScope==='all'?'__all__':currentStore;
-  $('store-scope-note').textContent=queryStoreScope==='all'?'总览窗口：默认查全部门店，也可直接指定店名':'单店窗口：默认查当前店，也可提问全部门店';
 }
 let storeDirectory = [];
 
@@ -483,6 +482,26 @@ function renderOrderFunnel(container,task) {
 function renderSummary(task) {
   const target = $("summary"); target.replaceChildren();
   const analysis = task.result?.analysis;
+  if (task.status === 'completed' && task.result?.closure_report) {
+    const report = task.result.closure_report;
+    const article = node('article', 'model-answer');
+    article.append(node('h2', '', report.title), node('p', '', report.summary));
+    for (const section of report.sections) {
+      const list = node('ul');
+      for (const item of section.items) list.append(node('li', '', item));
+      article.append(node('h3', '', section.title), list);
+    }
+    if (report.recommendation) {
+      const data = report.recommendation;
+      const block = $('recommendation-template').content.firstElementChild.cloneNode(true);
+      block.classList.add(data.status === 'approved' ? 'recommendation--approved' : 'recommendation--blocked');
+      block.querySelector('.recommendation-status').textContent = data.label;
+      block.querySelector('.recommendation-description').textContent = data.description;
+      block.querySelector('.recommendation-reason').textContent = data.reason;
+      article.append(block);
+    }
+    target.append(article);
+  }
   if(task.status==='cancelled'&&analysis)target.append(node('p','quality-note','已停止：以下仅为停止前取得的部分数据，不代表查询完成。'));
   if(analysis?.assessment){const a=analysis.assessment,section=node('section',`quality-note assessment-${a.code}`);
     section.append(node('h2','',a.label),node('p','',a.scope||'销量关注分级'));for(const reason of a.reasons)section.append(node('p','',reason));
@@ -574,9 +593,9 @@ function renderOperatingGuidance(target,guidance){
   // 所有文案使用textContent，平台记录或模型文本不能注入可执行HTML。
   const section=node('section','operating-guidance');
   section.append(node('h2','','经营判断与排查顺序'));
-  for(const [key,title] of [['observed','发生了什么'],['supported_signals','证据支持什么'],['uncertainties','还不能确定什么']]){
+  for(const [key,title] of [['observed','发生了什么'],['supported_signals','发现的线索'],['uncertainties','还不能确定什么']]){
     const group=node('article','guidance-group');group.append(node('h3','',title));
-    for(const item of guidance[key]||[]){group.append(node('p','',item.text));if(item.evidence_ids?.length)group.append(node('small','evidence-extra',`证据：${item.evidence_ids.join(' / ')}`));}
+    for(const item of guidance[key]||[])group.append(node('p','',item.text));
     if(!(guidance[key]||[]).length)group.append(node('p','limits','暂无充分的已观察证据。'));section.append(group);
   }
   const checks=node('article','guidance-group');checks.append(node('h3','','建议先查什么'));
@@ -892,6 +911,7 @@ async function changeStore(fromConversation=false) {
     if(fromConversation!==true&&previousScope!==queryStoreScope){resetTask();await startConversation();}
     return;
   }
+  approvalPolicyPanel.open = false;
   ++storeEpoch; ++adEpoch; clearTimeout(pollTimer); resetTask(); adReport = null;
   $("ad-shop-label").textContent = `${storeDirectory.find((shop)=>shop.id === currentStore)?.name || "当前门店"} · 正在读取推广账本`;
   $("ad-metrics").replaceChildren(); $("ad-chart").replaceChildren(); $("ad-table").replaceChildren(); $("ad-attention").replaceChildren(); $("ad-export").disabled = true;
@@ -907,18 +927,21 @@ async function changeStore(fromConversation=false) {
 async function showModule(module) {
   activeModule=module;
   // 推广账本和导入仍是单店能力，进入时明确显示实际使用的门店，避免总览名义下展示单店数据。
-  if(['advertising','imports'].includes(module)&&queryStoreScope==='all'){
+  if(['advertising','imports','calendar','radar','approval-drafts'].includes(module)&&queryStoreScope==='all'){
     queryStoreScope='current';localStorage.setItem('flower-query-scope',queryStoreScope);syncStoreWindow();
   }
   document.body.classList.toggle("investigation-active", module==="investigation");
-  if(module==='imports')setInspector(false);
+  if(['imports','calendar','radar','approval-drafts'].includes(module))setInspector(false);
   if(module!=="investigation")clearTimeout(pollTimer);
-  const views={overview:"overview-view",investigation:"investigation-workbench",advertising:"advertising-view",imports:"imports-view"};
+  const views={overview:"overview-view",investigation:"investigation-workbench",advertising:"advertising-view",imports:"imports-view",calendar:"schedule-view",radar:"risk-view","approval-drafts":"approval-drafts-view"};
   for(const [key,id] of Object.entries(views)){$(id).hidden=module!==key;$("nav-"+key).classList.toggle("selected",module===key);}
-  $("session-title").textContent={overview:"门店经营概览",investigation:conversation?.comparison?"跨店比较":currentTask?.parsed.sku_id||"新调查",advertising:"推广费用分析",imports:"经营数据导入"}[module];
+  $("session-title").textContent={overview:"门店经营概览",investigation:conversation?.comparison?"跨店比较":currentTask?.parsed.sku_id||"新调查",advertising:"推广费用分析",imports:"经营数据导入",calendar:"运营日程",radar:"风险雷达","approval-drafts":"待办与审批草稿"}[module];
   if(module==='imports')await loadImports();
   if(module==="overview")await loadOverview();
   if(module==="advertising")await loadAdvertising();
+  if(module==="calendar")await loadSchedule();
+  if(module==="radar")await loadRiskAlerts();
+  if(module==="approval-drafts")await loadApprovalDrafts();
 }
 
 const money = (cents) => `¥${(cents / 100).toLocaleString("zh-CN",{minimumFractionDigits:2,maximumFractionDigits:2})}`;
@@ -1077,9 +1100,68 @@ async function saveModelSettings(){
   if($("model-api-key").value.trim())payload.api_key=$("model-api-key").value.trim();
   try{const saved=await api("/api/model-settings",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload)});$("model-configuration-state").textContent=saved.configured?"密钥已在本机配置，不会返回浏览器。":"尚未配置密钥。";meta=await api("/api/meta");return saved;}finally{$("model-api-key").value="";}
 }
-$("open-account-settings").addEventListener("click",()=>{$("store-context-panel").open=false;loadModelSettings();});
+const approvalPolicyPanel = $("approval-policy-panel");
+const saveApprovalPolicyButton = $("save-approval-policy");
+let approvalPolicyRevision = null;
+let approvalPolicyRequest = 0;
+
+function showApprovalPolicy(policy) {
+  $("approval-min-discount").value = policy.min_discount_percent;
+  $("approval-max-budget").value = (policy.max_ad_budget_cents / 100).toFixed(2);
+  approvalPolicyRevision = policy.revision;
+  saveApprovalPolicyButton.disabled = false;
+}
+
+approvalPolicyPanel.addEventListener("toggle", async () => {
+  const request = ++approvalPolicyRequest;
+  approvalPolicyRevision = null;
+  saveApprovalPolicyButton.disabled = true;
+  if (!approvalPolicyPanel.open) return;
+  const epoch = storeEpoch;
+  const notice = $("approval-policy-notice");
+  $("approval-policy-form").reset();
+  $("approval-policy-store").textContent = storeDirectory.find(store => store.id === currentStore)?.name || currentStore;
+  notice.textContent = "正在读取本店规则…";
+  try {
+    const {policy} = await api("/api/approval-policy");
+    if (request !== approvalPolicyRequest || epoch !== storeEpoch) return;
+    showApprovalPolicy(policy);
+    notice.textContent = "";
+  } catch (error) {
+    if (request === approvalPolicyRequest && epoch === storeEpoch) notice.textContent = error.message;
+  }
+});
+
+$("approval-policy-form").addEventListener("submit", async event => {
+  event.preventDefault();
+  if (!approvalPolicyPanel.open || saveApprovalPolicyButton.disabled || approvalPolicyRevision === null) return;
+  const request = ++approvalPolicyRequest;
+  const epoch = storeEpoch;
+  const notice = $("approval-policy-notice");
+  const payload = {
+    expected_revision: approvalPolicyRevision,
+    min_discount_percent: $("approval-min-discount").valueAsNumber,
+    max_ad_budget_cents: Math.round($("approval-max-budget").valueAsNumber * 100),
+  };
+  saveApprovalPolicyButton.disabled = true;
+  try {
+    const {policy} = await api("/api/approval-policy", {
+      method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify(payload),
+    });
+    if (request !== approvalPolicyRequest || epoch !== storeEpoch) return;
+    showApprovalPolicy(policy);
+    notice.textContent = "已保存。新调查和待审批草稿将使用本店规则。";
+    if (activeModule === "approval-drafts") loadApprovalDrafts();
+  } catch (error) {
+    if (request !== approvalPolicyRequest || epoch !== storeEpoch) return;
+    notice.textContent = error.status === 409 ? "规则已被更新，请收起并重新展开后再编辑。" : error.message;
+    saveApprovalPolicyButton.disabled = error.status === 409;
+  }
+});
+
+$("open-account-settings").addEventListener("click",()=>{approvalPolicyPanel.open=false;$("store-context-panel").open=false;loadModelSettings();});
 $("close-account-settings").addEventListener("click",()=>{$("model-api-key").value="";$("account-settings-dialog").close();});
-$("account-settings-dialog").addEventListener("close",()=>{$("model-api-key").value="";$("workspace-access-token").value="";});
+$("account-settings-dialog").addEventListener("close",()=>{approvalPolicyPanel.open=false;$("model-api-key").value="";$("workspace-access-token").value="";});
 $("model-settings-form").addEventListener("submit",async event=>{event.preventDefault();event.submitter.disabled=true;try{await saveModelSettings();$("model-settings-notice").textContent="已保存，对新调查生效。";}catch(error){$("model-settings-notice").textContent=error.message;}finally{event.submitter.disabled=false;}});
 $("test-model-connection").addEventListener("click",async()=>{const button=$("test-model-connection");button.disabled=true;$("model-settings-notice").textContent="正在测试官方接口与工具调用…";try{await saveModelSettings();const result=await api("/api/model-test",{method:"POST",headers:{"Content-Type":"application/json"},body:"{}"});$("model-settings-notice").textContent=`${result.model} 连接成功，Tool Calling 已验证。`;}catch(error){$("model-settings-notice").textContent=error.message;}finally{button.disabled=false;}});
 $("connect-workspace").addEventListener("click",()=>{sessionStorage.setItem("signal-access-token",$("workspace-access-token").value);$("workspace-access-token").value="";$("account-settings-dialog").close();initialize();});

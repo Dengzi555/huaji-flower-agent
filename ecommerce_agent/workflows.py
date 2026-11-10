@@ -16,6 +16,7 @@ from .tools import ToolRegistry
 from .verification import observation_assertions, verify_assertions
 from .operating_guidance import build_guidance,guidance_markdown
 from .capabilities import validate_plan
+from .roles import get_role, require_role_tool
 from .cancellation import checkpoint,current_token,CancelledError,cancel_state
 
 
@@ -29,7 +30,11 @@ def execute_task(store, sku_id, day, output, *, task_context, provider=None,
     if intent not in ROUTES:
         raise ValueError("Unsupported workflow intent")
     # 路由只识别意图；冻结计划仍需在取数前独立复核，不能信任模型自报参数。
-    validate_plan(task_context,store)
+    planned_tools = validate_plan(task_context,store)
+    if 'role' in task_context and intent != 'investigate_sales_change':
+        role = get_role(task_context['role'])
+        for tool in planned_tools:
+            require_role_tool(role, tool)
     if intent=='query_combined':
         from .combined_query import execute_combined
         return execute_combined(store,task_context,output,on_event=on_event,timeout_seconds=timeout_seconds)

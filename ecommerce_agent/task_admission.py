@@ -8,6 +8,7 @@ from .task_parser import parse_task
 from .cancellation import checkpoint
 from .model_runtime import current_ledger
 from .query_context import QueryContext
+from .roles import DEFAULT_ROLE, get_role
 
 
 @dataclass
@@ -25,8 +26,9 @@ class PreparedTask:
 
 def validate_request(payload,idempotency_key=None):
     """只验证请求形状并返回幂等摘要；商品/时间/权限仍由业务解析器统一验证。"""
-    if not isinstance(payload,dict) or set(payload)-{'question','sku','date','intent','parent_id'}:
-        raise ValueError('请求只支持 question、sku、date、intent、parent_id 字段。')
+    if not isinstance(payload,dict) or set(payload)-{'question','sku','date','intent','parent_id','role'}:
+        raise ValueError('请求只支持 question、sku、date、intent、parent_id、role 字段。')
+    get_role(payload.get('role', DEFAULT_ROLE))
     for key in ('sku','date','intent','parent_id'):
         if payload.get(key) is not None and (not isinstance(payload[key],str) or len(payload[key])>100):
             raise ValueError(f'{key} 必须是短字符串。')
@@ -38,6 +40,8 @@ def validate_request(payload,idempotency_key=None):
 def prepare_task(payload,store,catalog,fingerprint,*,settings=None,classifier=None,planner=None,
                  today=None,confirmed_candidates=None,conversation=None,custom_store=False,operating_settings=None):
     """输入冻结的数据版本及可注入规划器，输出PreparedTask；调用者须提供模型资源作用域。"""
+    role_id = payload.get('role', DEFAULT_ROLE)
+    get_role(role_id)
     if settings and (classifier is None or planner is None):
         status=settings.public()
         if status['enabled'] and status['configured']:
@@ -55,6 +59,8 @@ def prepare_task(payload,store,catalog,fingerprint,*,settings=None,classifier=No
     parsed=parse_task(question,catalog,store,today=today,sku_override=payload.get('sku') or None,
         date_override=payload.get('date') or None,intent_override=payload.get('intent') or None,
         route_classifier=classifier,confirmed_candidates=confirmed_candidates,query_planner=planner,query_context=context)
+    # 持久化角色 ID，执行时从服务端重取授权，不信任任务中自报的工具列表。
+    parsed['role'] = role_id
     parsed['planning_runtime']=current_ledger().snapshot()
     if document is None:
         # 年度库仅冻结可调用范围与前28日历史；缺少商品/日期时也不复制整年整店。

@@ -1,0 +1,21 @@
+{
+  "competitors": [
+    {
+      "store_id": "hx-sz-ns",
+      "sku_id": "FLR-ROSE-99-BOUQUET",
+      "date": "2026-10-25",
+      "name": "模拟竞品 · 99朵红玫瑰花束",
+      "previous_price_cents": 15900,
+      "price_cents": 11130,
+      "source": "合成竞品对比样例"
+    }
+  ],
+  "weather": [
+    {
+      "store_id": "hx-sz-ns",
+      "date": "2026-10-25",
+      "summary": "模拟天气：阴，午后有小雨",
+      "source": "合成天气样例"
+    }
+  ]
+}

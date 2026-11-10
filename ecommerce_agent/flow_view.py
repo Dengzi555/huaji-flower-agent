@@ -4,7 +4,7 @@ import hashlib
 from html import escape
 from pathlib import Path
 
-TRACKED=('task_admission.py','task_repository.py','task_execution.py','model_runtime.py','cancellation.py','errors.py','annual_data.py','annual_store.py','data.py','semantic_router.py','routing.py','task_parser.py','assistant_chat.py','capabilities.py','operating_guidance.py','query_plan.py','natural_dates.py','time_scope.py','business_calendar.py','sales_trend.py','group_sales.py','order_funnel.py','assessment.py','data_imports.py','tabular.py','web_service.py','web.py','workflows.py','tools.py','provider.py','local_model.py','context_memory.py','conversations.py','scope_patch.py','store_comparison.py','flow_view.py','runner.py')
+TRACKED=('guardrails/policy_checker.py','investigation_worker.py','roles.py','task_admission.py','task_repository.py','task_execution.py','model_runtime.py','cancellation.py','errors.py','annual_data.py','annual_store.py','data.py','semantic_router.py','routing.py','task_parser.py','assistant_chat.py','capabilities.py','operating_guidance.py','query_plan.py','natural_dates.py','time_scope.py','business_calendar.py','sales_trend.py','group_sales.py','order_funnel.py','assessment.py','data_imports.py','tabular.py','web_service.py','web.py','workflows.py','tools.py','provider.py','local_model.py','context_memory.py','conversations.py','scope_patch.py','store_comparison.py','flow_view.py','runner.py')
 
 
 # 评测入口独立于线上路由；修改评分或对比策略也触发学习图版本变化。
@@ -54,7 +54,7 @@ class FlowView:
             ('回答关系校验','模型草稿 + 当前证据 + 宿主日期/订单/分级契约','finish同时校验数字断言与有限关系：迟到取消归属、周间隔、宿主分级理由及因果/冲突边界；拒绝后在原预算内纠正，超限停止；通过不等于全文语义核验','narrative_contract.py / tools.py / runner.py'),
             ('简称消歧','目录候选 + 已识别日期 + 明确意图','多款简称只追问商品并保留日期；规划器可用__matched__保留候选集合，不能擅自扩大或缩小范围','task_parser.py / query_plan.py'),
             ('路由消融与模型工具链（独立评测入口）','/eval评测中心或CLI；固定年度数据、golden题目与评分器','评测中心管理离线/真实规划任务、逐题进度、停止、失败审核和同条件运行比较；CLI另支持rules_only/direct_model/hybrid消融；冻结数据集与源码指纹，导出Claw轨迹','eval_center.py / golden_evaluation.py / routing_benchmark.py / claw_eval_adapter.py'),
-            ('应用模块边界','HTTP/会话只调用应用入口；准入、仓库、执行器分别组合','task_admission生成任务卡与快照，不入队；task_repository管理SQLite事务与状态，不调模型；task_execution在提交后执行，事务回调关联业务扩展','web_service.py / task_admission.py / task_repository.py / task_execution.py'),
+            ('应用模块边界','HTTP/会话只调用应用入口；准入、仓库、执行器分别组合','task_admission校验角色并生成任务卡与快照，不入队；task_repository管理SQLite事务与状态，不调模型；task_execution在提交后执行，事务回调关联业务扩展','web_service.py / task_admission.py / task_repository.py / task_execution.py'),
             ('模型资源管理（所有模型入口）','请求/后台任务独立账本 + 系统/当前问题/工具协议 + 宿主预算','每次调用前估算容量并预留预算；仅裁剪完整旧聊天轮次；工具证据不拆散，超限停止；供应商用量与容量估算分开，失败/取消用量未知不补零','model_runtime.py / provider.py / runner.py / conversations.py / web_service.py'),
             ('用户停止（贯穿各阶段）','请求ID或任务ID + 当前门店 + 取消令牌','规划/流式响应及时退出；队列取消持久化；每次模型/工具前检查；保留部分证据，迟到结果不覆盖取消终态；已发起API费用可能未知','cancellation.py / provider.py / web_service.py / conversations.py / web.py'),
             ('年度数据版本','固定种子 + 320款目录 + 365天 + 门店画像','逐日勾稽后发布不可变SQLite版本；答案仅供评测；任务只冻结范围与额外历史，不复制整年','annual_data.py / annual_store.py / data.py / store_workspace.py'),
@@ -72,9 +72,9 @@ class FlowView:
             ('统一能力契约','步骤依赖 + 意图/范围/指标 + 冻结门店与日期','取数前再次验证能力、参数、DAG和工具白名单；未接入的数据域明确拒绝，不执行其他分支代答','capabilities.py / workflows.py'),
             ('背景检索与任务队列','准入任务 + 已确认且适用的门店背景 + 待裁决遮蔽','最多3条背景与快照同事务提交；商品级覆盖门店级时回执与正文显式披露，不再静默；提交后通知执行器；重启按仓库状态恢复队列，幂等复用先于模型调用','context_memory.py / task_admission.py / task_repository.py / task_execution.py / web_service.py'),
             ('背景遮蔽裁决','同一事项的门店级与商品级同时有效且时间重叠','只登记覆盖关系，不判断内容真假；保留一方时撤回另一方而非删除，历史快照不变；一方失效自动关闭；裁决写入两侧事件','context_memory.py / web.py / web_assets/app.js'),
-            ('执行','专项、明确多事项组合或调查模型循环；所有工具绑定冻结范围','组合事项最多三个独立工具并发，分支独立注册表，主线程统一事件/证据，随后汇总；失败保留部分结果，取消丢弃迟到结果；调查另有多基线/日历/订单批次','combined_query.py / workflows.py / runner.py / tools.py / order_funnel.py'),
+            ('执行','专项、明确多事项组合或调查模型循环；所有工具绑定冻结范围','组合事项最多三个独立工具并发，分支独立注册表，主线程统一事件/证据，随后汇总；失败保留部分结果，取消丢弃迟到结果；销量暴跌走独立进程，检查竞品、天气/节日和广告，缺数明确标注','combined_query.py / workflows.py / runner.py / tools.py / order_funnel.py'),
             ('综合判断','绝对损失 + 商品生命周期 + 同星期历史 + 假期/活动可比性','正常波动 / 值得关注 / 证据不足 / 数据冲突；保留历史筛选与策略版本','assessment.py'),
-            ('输出','计算结果与实际观察证据','发生什么 → 证据支持什么 → 还缺什么 → 建议先查什么；冲突优先核对，建议不代表已执行动作','operating_guidance.py / runner.py / web_assets/app.js'),
+            ('输出','计算结果与实际观察证据','发生什么 → 证据支持什么 → 还缺什么 → 建议先查什么；冲突优先核对；结案建议按任务的门店规则快照核验；人工批准前按本店最新规则复核','operating_guidance.py / runner.py / web_assets/app.js'),
         ]
         # 表格按实际主链路排列；旁路能力放在后面，避免把评测误当每次请求必经步骤。
         order=['输入','对话状态','统一查询上下文','默认范围与模型兜底','门店实体解析','推广账本对话分派','普通对话分流',
@@ -141,13 +141,13 @@ def render_svg():
     box('clarify',1030,520,410,'必要信息缺失才追问',['未知店名 / 共享别名 / 真正歧义','保留已确定日期、商品与门店','用户补充后，携带上下文重新准入','未命中规则本身不是追问理由'],'#fff4df',143)
     box('retrieval',1030,690,410,'本地BGE · 向量候选检索',['相似例句与意图得分仅供参考','不复制示例中的日期或商品','索引故障仍进入模型规划'],'#edf5ef')
     box('planner',1030,850,410,'按需 · 一次业务查询规划',['原话 + 候选 + 目录 / 时间状态','结构化计划直接进入共享任务编译器','已知条件保留；缺信息和模型错误分开'],'#fff4df')
-    box('validate',490,1010,480,'04  统一校验与查询口径',['核验门店、日期、商品、操作、指标','校验白名单 / 依赖；模型不能扩大权限','结构化条件逐店重绑定，不重写原话','缺数据、能力外与模型故障分别处理'],height=168)
+    box('validate',490,1010,480,'04  统一校验与查询口径',['核验门店、日期、商品、操作、指标','校验角色、工具白名单与依赖；越权停止','结构化条件逐店重绑定，不重写原话','缺数据、能力外与模型故障分别处理'],height=168)
     box('errors',1030,1190,410,'明确失败类型与恢复动作',['缺数据不当作零；网络错不当作缺条件','瞬时传输故障有限重试，逐次记账可取消','超时/协议错误/已输出断流 → 手动恢复'],'#fff0eb')
     box('queue',490,1230,480,'05  任务快照 → 仓库 → 队列',['冻结范围、数据版本与适用门店背景','同事务提交后入队，幂等与状态持久化','每店独立取证；取消不被迟到结果覆盖','最多8店；重启恢复队列，运行中标中断'],height=143)
     box('lookup',40,1450,460,'06A  确定性查询 · 有限并发',['注册表白名单查询与程序计算','哪个店最好 → 店内范围销量排门店','各店哪款最好 → 各店分别排商品','明确多事项 → 最多3路独立取数并发','汇总在取数后；缺口/失败独立保留'],'#eef3fb',168)
     box('investigate',890,1450,550,'06B  调查 · 模型与工具循环',['DeepSeek → 工具请求 → 注册表校验执行','工具证据回传 → analyze_metrics → finish','关闭模型时使用确定性调查工作流','批次 / 请求 / 时间 / token预算与取消控制','数字断言 + 有限关系校验；拒绝后预算内纠正'],'#edf5ef',168)
     box('facts',490,1660,480,'07  事实、证据与综合判断',['绝对损失 / 生命周期 / 同星期历史','日历、活动可比性、订单取消批次','正常波动 / 值得关注 / 不足 / 冲突'])
-    box('output',490,1830,480,'08  回答与可视化',['发生什么 → 证据 → 缺口 → 下一步','单店或跨店汇总、排名与变化曲线','保留任务、工具轨迹、证据与用量'])
+    box('output',490,1830,480,'08  回答与可视化',['发生什么 → 证据 → 缺口 → 下一步','单店或跨店汇总、排名与变化曲线','保留任务、工具轨迹、证据与用量','结案按规则快照核验，批准前按最新门店规则复核'])
     # 支撑能力单独列出，不画成每次用户查询的必经步骤。
     box('data',40,270,390,'数据底座 · 独立维护',['年度合成数据：320款 / 365天','CSV / Excel导入与版本发布','既有任务仍使用冻结数据快照'],'#f1f3ed')
     box('memory',40,490,390,'门店记忆 · 背景而非事实',['只取已确认、适用的门店背景','最多3条 / 1000字，随任务留档','商品级覆盖门店级时显式披露','裁决：保留一方或确认并存','不能替代当日证据或工具权限'],'#f1f3ed',180)

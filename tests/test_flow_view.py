@@ -13,7 +13,10 @@ class FlowViewTests(unittest.TestCase):
         origin=Path(__file__).resolve().parents[1]/'ecommerce_agent'
         with tempfile.TemporaryDirectory() as folder:
             root=Path(folder);code=root/'ecommerce_agent';code.mkdir()
-            for name in TRACKED:shutil.copy2(origin/name,code/name)
+            for name in TRACKED:
+                destination = code / name
+                destination.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copy2(origin / name, destination)
             (root/'.env').write_text('must-not-read-secret',encoding='utf-8')
             view=FlowView(root);first=view.snapshot()
             self.assertFalse(first['restart_required']);self.assertEqual(len(first['routes']),6)

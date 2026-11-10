@@ -1,0 +1,101 @@
+.ops-board {
+  --ops-surface: #fff;
+  --ops-border: var(--line);
+  --ops-ink: var(--text);
+  --ops-gold: var(--accent);
+  --ops-selected: #eee9de;
+}
+
+html[data-theme="dark"] .ops-board {
+  --ops-surface: #1b2017;
+  --ops-border: #3d4631;
+  --ops-ink: #ddd7c7;
+  --ops-gold: #f5d789;
+  --ops-selected: #302e21;
+}
+
+.ops-board h1 { color: var(--ops-ink); margin-bottom: 20px; }
+.ops-board h2, .ops-board p { color: var(--ops-ink); }
+.ops-panel { min-width: 0; padding: 18px; background: var(--ops-surface); border: 1px solid var(--ops-border); border-radius: 10px; color: var(--ops-ink); }
+.ops-alert-kind { color: var(--ops-gold); font-weight: 600; }
+#schedule-plans { display: grid; gap: 12px; margin-top: 16px; overflow-wrap: anywhere; }
+#schedule-plans ul { margin-bottom: 0; padding-inline-start: 20px; }
+#schedule-form { display: grid; gap: 10px; }
+#schedule-form label { display: grid; gap: 4px; font-size: 13px; }
+#schedule-form input, #schedule-form select { width: 100%; min-height: 36px; padding: 5px 8px; }
+#schedule-form button { justify-self: start; }
+.ops-alerts { display: grid; gap: 10px; }
+.ops-alert { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.ops-alert h2 { margin: 5px 0; }
+.ops-alert p { margin: 0; font-size: 13px; }
+.ops-alert button { flex: none; }
+@media (max-width: 720px) {
+  .ops-panel { padding: 12px; }
+}
+
+#approval-drafts-list { display: grid; gap: 12px; }
+#approval-drafts-list .recommendation { margin-top: 0; }
+#approval-drafts-list .draft-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+#approval-drafts-list button { padding: 7px 12px; border-radius: 6px; font-weight: 600; }
+#approval-drafts-list .draft-approve { background: #216343; color: #fff; }
+#approval-drafts-list .draft-reject { background: #e4e7ea; color: #333a41; }
+html[data-theme="dark"] #approval-drafts-list .draft-reject { background: #43464a; color: #f1f1f1; }
+#approval-drafts-list button:disabled { opacity: .5; cursor: not-allowed; }
+#approval-drafts-list .draft-error:empty { display: none; }
+#approval-drafts-list .draft-error { color: #972b32; }
+html[data-theme="dark"] #approval-drafts-list .draft-error { color: #ffc0c3; }
+
+/* CRM 日程的页头、视图切换和月历结构，沿用花迹面板配色。 */
+.schedule-header, .schedule-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.schedule-header { margin-bottom: 16px; }
+.schedule-header h1 { margin: 0; }
+.schedule-header .primary, .schedule-switch button { padding: 7px 11px; border-radius: 6px; }
+.schedule-toolbar { margin: 16px 0 12px; }
+.schedule-switch { display: flex; align-items: center; gap: 5px; }
+.schedule-switch strong { min-width: 6em; text-align: center; font-size: 13px; }
+.schedule-switch button, .schedule-day {
+  background: transparent;
+  color: var(--ops-ink);
+}
+.schedule-switch button[aria-pressed="true"], .schedule-switch button:hover, .schedule-day:hover {
+  background: var(--ops-selected);
+  color: var(--ops-gold);
+}
+.schedule-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); }
+.schedule-weekdays { text-align: center; padding-bottom: 9px; font-size: 12px; }
+#schedule-days { gap: 3px; }
+.schedule-day {
+  min-width: 0;
+  min-height: 68px;
+  padding: 5px;
+  border: 1px solid var(--ops-border);
+  border-radius: 5px;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 3px;
+  text-align: left;
+}
+.schedule-day[aria-current="date"] { border-color: var(--ops-gold); }
+.schedule-day-title { display: flex; gap: 5px; align-items: center; font-size: 12px; }
+.schedule-holiday-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--ops-gold); }
+.schedule-entry {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 11px;
+  background: var(--ops-selected);
+  padding: 2px 4px;
+  border-radius: 3px;
+}
+#schedule-view [hidden] { display: none; }
+@media (max-width: 640px) {
+  .schedule-day { min-height: 53px; padding: 3px; }
+  .schedule-entry { padding-inline: 2px; }
+}

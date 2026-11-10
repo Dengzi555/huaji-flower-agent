@@ -21765,7 +21765,9 @@
       "status": "ok",
       "source_id": "flower-availability-daily",
       "out_of_stock_minutes": 487,
-      "monitored_minutes": 1440
+      "monitored_minutes": 1440,
+      "stock_on_hand": 2,
+      "safety_stock": 8
     },
     {
       "sku_id": "FLR-ROSE-99-BOUQUET",
@@ -31865,7 +31867,9 @@
       "status": "ok",
       "source_id": "flower-campaign-daily",
       "active": true,
-      "campaign_name": "周末鲜花满减券"
+      "campaign_name": "情人节大促满减",
+      "campaign_ended_at": "2026-10-24T18:00:00+08:00",
+      "resource_slot_active": true
     },
     {
       "sku_id": "FLR-ROSE-99-BOUQUET",
@@ -31874,7 +31878,8 @@
       "status": "ok",
       "source_id": "flower-campaign-daily",
       "active": false,
-      "campaign_name": ""
+      "campaign_name": "",
+      "resource_slot_active": false
     },
     {
       "sku_id": "FLR-ROSE-99-BOUQUET",

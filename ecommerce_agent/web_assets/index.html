@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="zh-CN">
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="theme-color" content="#faf9f6"><title>花迹 · 鲜花经营助手</title><link rel="icon" href="/brand-mark.svg" type="image/svg+xml"><link rel="stylesheet" href="/style.css"><link rel="stylesheet" href="/brand.css"><link rel="stylesheet" href="/knowledge.css"><link rel="stylesheet" href="/operations.css"><link rel="stylesheet" href="/trend.css"><script src="/theme.js"></script><script src="/trend.js" defer></script><script src="/app.js" defer></script></head>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="theme-color" content="#faf9f6"><title>花迹 · 鲜花经营助手</title><link rel="icon" href="/brand-mark.svg" type="image/svg+xml"><link rel="stylesheet" href="/style.css"><link rel="stylesheet" href="/brand.css"><link rel="stylesheet" href="/knowledge.css"><link rel="stylesheet" href="/operations.css"><link rel="stylesheet" href="/trend.css"><script src="/theme.js"></script><script src="/trend.js" defer></script><link rel="stylesheet" href="/operations-board.css"><script src="/app.js" defer></script><script src="/operations-board.js" defer></script><script src="/approval-drafts.js" defer></script></head>
 <body class="investigation-active">
   <link rel="stylesheet" href="/imports.css"><script src="/imports.js" defer></script>
   <!-- 会话、输入和详情独立布局。沿用原 DOM ID 和 API，所有事实仍来自后端。 -->
@@ -10,21 +10,98 @@
     <symbol id="i-arrow" viewBox="0 0 24 24"><path d="m6 12 6-6 6 6M12 6v13"/></symbol>
     <symbol id="i-file" viewBox="0 0 24 24"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9Z"/><path d="M14 3v6h6M8 13h8M8 17h5"/></symbol>
     <symbol id="i-sliders" viewBox="0 0 24 24"><path d="M4 7h9m4 0h3M4 17h3m4 0h9"/><circle cx="15" cy="7" r="2"/><circle cx="9" cy="17" r="2"/></symbol>
+    <symbol id="i-investigate" viewBox="0 0 24 24"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 4 4m-13-8 2.5-3 2 2 2.5-3"/></symbol>
+    <symbol id="i-drafts" viewBox="0 0 24 24"><rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4V3h6v1m-6 9 2 2 4-4"/></symbol>
+    <symbol id="i-radar" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><path d="m12 12 6-6"/><circle cx="12" cy="12" r="1"/></symbol>
+    <symbol id="i-calendar" viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="16" rx="2"/><path d="M8 3v4m8-4v4M4 10h16m-12 5h2m4 0h2"/></symbol>
+    <symbol id="i-chart" viewBox="0 0 24 24"><path d="M4 4v16h16M8 15v-4m4 4V7m4 8v-6"/></symbol>
+    <symbol id="i-promotion" viewBox="0 0 24 24"><path d="M4 10v4h5l8 4V6l-8 4H4zm4 4 2 6m9-11 2-1m-2 7 2 1"/></symbol>
+    <symbol id="i-import" viewBox="0 0 24 24"><path d="M12 3v11m-4-4 4 4 4-4M4 15v5h16v-5"/></symbol>
+    <symbol id="i-history" viewBox="0 0 24 24"><path d="M4 12a8 8 0 1 1 2 5m-2-5V7m0 5h5m3-4v4l3 2"/></symbol>
   </defs></svg>
   <aside class="sidebar" id="sidebar" aria-label="调查导航">
-    <a class="brand" href="/" aria-label="花迹首页"><img class="flower-logo" src="/brand-mark.svg" alt="花仙女花瓣标识"><span>花迹 <small>HUAJI / 花仙女工作区</small></span></a>
-    <button class="new-task" id="new-task"><svg class="icon"><use href="#i-plus"/></svg>新建调查<span class="key-hint">New</span></button>
-    <div class="store-switch"><label for="store-select">当前管理门店</label><select id="store-select" aria-label="切换店铺"><option value="">正在读取门店</option></select><small id="store-scope-note">店铺数据、调查记录和推广账本独立</small></div>
-    <nav class="workspace-nav" aria-label="经营模块"><button id="nav-investigation" class="selected">经营调查</button><button id="nav-overview">门店经营概览</button><button id="nav-advertising">推广分析</button><button id="nav-imports">数据导入</button></nav><a class="flow-entry" href="/eval">评测中心 ↗</a><a class="flow-entry" href="/flow">项目流程图 ↗</a>
-    <div class="history-heading"><span>最近调查</span><button id="refresh-history" class="icon-button" aria-label="刷新历史调查">↻</button></div>
-    <div id="history" class="history-list"><p class="subtle">还没有调查，先问一个问题。</p></div>
-    <button type="button" id="open-account-settings" class="sidebar-bottom account-settings-button" aria-label="打开账号与API设置"><span class="profile-mark">花</span><span>花迹 · 本地工作区<small>账号与 API 设置 ↗</small></span><span class="live-dot"></span></button>
+    <div class="sidebar-context">
+      <a class="brand" href="/" aria-label="花迹首页"><img class="flower-logo" src="/brand-mark.svg" alt="花仙女花瓣标识"><span>花迹</span></a>
+      <div class="store-switch">
+        <label for="workspace-select">工作区</label>
+        <select id="workspace-select" aria-label="切换工作区"><option value="local">花仙女工作区</option></select>
+        <label for="store-select">当前管理门店</label>
+        <select id="store-select" aria-label="切换店铺"><option value="">正在读取门店</option></select>
+      </div>
+      <button type="button" class="new-task" id="new-task"><svg class="icon" aria-hidden="true"><use href="#i-plus"/></svg>新建调查</button>
+    </div>
+    <nav class="workspace-nav" aria-label="经营模块">
+      <button type="button" id="nav-investigation" class="selected"><svg class="icon" aria-hidden="true"><use href="#i-investigate"/></svg><span>AI 智能调查</span></button>
+      <button type="button" id="nav-approval-drafts"><svg class="icon" aria-hidden="true"><use href="#i-drafts"/></svg><span>待办与审批草稿</span></button>
+      <hr class="sidebar-divider">
+      <button type="button" id="nav-radar"><svg class="icon" aria-hidden="true"><use href="#i-radar"/></svg><span>风险雷达</span></button>
+      <button type="button" id="nav-calendar"><svg class="icon" aria-hidden="true"><use href="#i-calendar"/></svg><span>运营日程</span></button>
+      <button type="button" id="nav-overview"><svg class="icon" aria-hidden="true"><use href="#i-chart"/></svg><span>门店经营概览</span></button>
+      <button type="button" id="nav-advertising"><svg class="icon" aria-hidden="true"><use href="#i-promotion"/></svg><span>推广分析</span></button>
+      <button type="button" id="nav-imports"><svg class="icon" aria-hidden="true"><use href="#i-import"/></svg><span>数据导入</span></button>
+    </nav>
+    <div class="sidebar-history">
+      <details class="sidebar-group">
+        <summary><svg class="icon" aria-hidden="true"><use href="#i-history"/></svg>历史记录</summary>
+        <div class="history-heading"><span>最近调查任务</span><button type="button" id="refresh-history" class="icon-button" aria-label="刷新历史调查">↻</button></div>
+        <div id="history" class="history-list"><p class="subtle">还没有调查，先问一个问题。</p></div>
+      </details>
+    </div>
+    <button type="button" id="open-account-settings" class="sidebar-bottom account-settings-button"><span class="profile-mark" aria-hidden="true">花</span><span>系统设置与 API 配置</span></button>
   </aside>
   <main>
     <header class="topbar"><div class="breadcrumb"><button id="toggle-sidebar" class="icon-button" aria-label="切换调查导航" aria-controls="sidebar" aria-expanded="true"><svg class="icon"><use href="#i-panel"/></svg></button><span>经营调查</span><span class="slash">/</span><strong id="session-title">新调查</strong></div><div class="topbar-right"><button id="theme-toggle" class="theme-toggle" type="button" aria-label="切换为暗色主题">☾ 暗色</button><span id="mode-badge" class="badge" hidden></span><button id="toggle-inspector" class="icon-button" aria-label="切换任务详情" aria-controls="inspector" aria-expanded="false"><svg class="icon"><use href="#i-panel"/></svg></button></div></header>
-    <section id="overview-view" class="operations-view" hidden aria-label="门店经营概览"><div class="ad-heading"><div><p class="eyebrow">HUAXIANNV / STORE OPERATIONS</p><h1>门店经营，一眼看清。</h1><p>查看各店销量、营业额与推广费用，找到值得关注的经营变化。</p></div><img class="overview-brand" src="/brand-mark.svg" alt="花仙女花瓣标识"></div><form id="overview-filters" class="ad-filters"><label>经营日期<input type="date" id="overview-date" required></label><button type="submit" class="primary">更新概览</button></form><p id="overview-notice" role="status" class="ad-notice"></p><div id="overview-totals" class="ad-metrics"></div><div id="store-cards" class="store-cards"></div></section>
+    <section id="schedule-view" class="operations-view ops-board" hidden aria-labelledby="schedule-title">
+      <div class="schedule-header">
+        <h1 id="schedule-title">运营日程</h1>
+        <button type="button" id="schedule-new" class="primary">＋ 新建计划</button>
+      </div>
+      <form id="schedule-form" class="ops-panel">
+        <label>日期<input id="schedule-date" type="date" required></label>
+        <label>计划类型
+          <select id="schedule-kind" required>
+            <option value="">选择计划类型</option>
+            <option value="stocking">备货计划</option>
+            <option value="staffing">员工排班</option>
+          </select>
+        </label>
+        <label>具体内容<input id="schedule-text" maxlength="120" required></label>
+        <button type="submit" class="primary">提交</button>
+      </form>
+      <p id="schedule-status" role="status" hidden></p>
+      <div class="schedule-toolbar" aria-label="日程视图">
+        <div class="schedule-switch" role="group" aria-label="切换视图">
+          <button type="button" id="schedule-calendar-mode" aria-pressed="true">月历</button>
+          <button type="button" id="schedule-list-mode" aria-pressed="false">列表</button>
+        </div>
+        <div id="schedule-month-controls" class="schedule-switch" role="group" aria-label="切换月份">
+          <button type="button" id="schedule-today">今天</button>
+          <button type="button" id="schedule-prev" aria-label="上个月">‹</button>
+          <strong id="schedule-month"></strong>
+          <button type="button" id="schedule-next" aria-label="下个月">›</button>
+        </div>
+      </div>
+      <div id="schedule-calendar" class="ops-panel" aria-label="月历">
+        <div class="schedule-grid schedule-weekdays" aria-hidden="true">
+          <span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span>六</span><span>日</span>
+        </div>
+        <div id="schedule-days" class="schedule-grid"></div>
+      </div>
+      <div id="schedule-plans" aria-label="按日期分组的运营计划" hidden></div>
+    </section>
+    <section id="approval-drafts-view" class="operations-view ops-board" hidden aria-labelledby="approval-drafts-title">
+      <h1 id="approval-drafts-title">待办与审批草稿</h1>
+      <p id="approval-drafts-status" role="status"></p>
+      <div id="approval-drafts-list"></div>
+    </section>
+    <section id="risk-view" class="operations-view ops-board" hidden aria-labelledby="risk-title">
+      <h1 id="risk-title">风险雷达</h1>
+      <p id="risk-status" role="status">正在读取风险预警</p>
+      <div id="risk-alerts" class="ops-alerts"></div>
+    </section>
+    <section id="overview-view" class="operations-view" hidden aria-label="门店经营概览"><div class="ad-heading"><div><h1>门店经营概览</h1></div><img class="overview-brand" src="/brand-mark.svg" alt="花仙女花瓣标识"></div><form id="overview-filters" class="ad-filters"><label>经营日期<input type="date" id="overview-date" required></label><button type="submit" class="primary">更新概览</button></form><p id="overview-notice" role="status" class="ad-notice"></p><div id="overview-totals" class="ad-metrics"></div><div id="store-cards" class="store-cards"></div></section>
     <section id="advertising-view" class="advertising-view" hidden aria-label="推广费用分析">
-      <div class="ad-heading"><div><p class="eyebrow">HUAXIANNV / GROWTH LEDGER</p><h1>把每一次点击，放回经营里。</h1><p id="ad-shop-label">当前门店的手动与自动推广账本</p></div><span class="ad-heading-mark"><img src="/brand-mark.svg" alt=""></span></div>
+      <div class="ad-heading"><div><h1>推广分析</h1><p id="ad-shop-label">当前门店的手动与自动推广账本</p></div><span class="ad-heading-mark"><img src="/brand-mark.svg" alt=""></span></div>
       <form id="ad-filters" class="ad-filters"><label>分析日期<input id="ad-date" type="date" required></label><label>推广方式<select id="ad-mode"><option value="all">全部推广</option><option value="manual">手动推广</option><option value="automatic">自动推广</option></select></label><label>高费用线 %<input id="ad-high" type="number" value="10" min="0" max="100" step="0.1" required></label><label>低投入关注线 %<input id="ad-low" type="number" value="3" min="0" max="100" step="0.1" required></label><button class="primary" type="submit">更新分析</button><button id="ad-export" type="button" class="text-button" disabled>导出分析 JSON ↗</button></form>
       <p id="ad-notice" role="status" class="ad-notice"></p><div id="ad-metrics" class="ad-metrics"></div>
       <div class="ad-grid"><section class="ad-chart-panel"><div class="ad-section-title"><h2>24 小时推广趋势</h2><span>总扣费 / 手动 / 自动</span></div><div id="ad-chart" class="ad-chart" aria-label="小时推广扣费图"></div><div class="ad-legend"><span class="legend-manual">手动推广</span><span class="legend-auto">自动推广</span><span class="legend-total">总扣费</span></div></section><section class="ad-attention-panel"><div class="ad-section-title"><h2>需要关注的时段</h2><span id="ad-attention-count"></span></div><div id="ad-attention"></div></section></div>
@@ -39,7 +116,7 @@
           <section id="conversation-state" class="conversation-state" aria-label="当前调查对象"><div class="conversation-state-heading"><span>当前调查对象</span><button type="button" id="edit-conversation-scope" class="text-button">修改范围</button></div><div id="conversation-scope" class="conversation-scope"></div><p id="conversation-notice" role="status"></p><div id="conversation-store-choices"></div></section>
           <details id="conversation-history" class="conversation-history"><summary>本次对话 <span id="conversation-turn-count">0</span> 轮 · 对象与条件变化</summary><div id="conversation-turns"></div></details>
           <section id="store-comparison" class="store-comparison" aria-label="跨店比较" hidden></section>
-          <section class="intro" id="welcome"><img class="welcome-flower" src="/brand-mark.svg" alt=""><p class="eyebrow">花迹 · 鲜花经营助手</p><h1>循着花迹，看清每一次经营变化。</h1><p class="intro-copy">把经营中的疑问交给花迹，从销量、流量与库存中寻找线索。</p></section>
+          <section class="intro" id="welcome"><img class="welcome-flower" src="/brand-mark.svg" alt=""><h1>AI 智能调查</h1></section>
 
           <div class="investigation-data-note"><p id="date-coverage" class="date-coverage">正在读取数据范围</p><details class="product-title"><summary>数据与能力说明</summary><p id="dataset-note"></p><p>开启 DeepSeek 后，销量变化调查使用模型工具调用；其他专项查询按规则执行。结论需结合来源证据核验。</p></details></div>
           <section class="result-panel" aria-labelledby="result-title">
@@ -50,6 +127,14 @@
             <div class="result-toolbar" id="result-toolbar" hidden><div class="tabs" role="tablist" aria-label="调查详情"><button role="tab" aria-selected="true" data-tab="summary">调查结论</button><button role="tab" aria-selected="false" data-tab="evidence">来源证据</button><button role="tab" aria-selected="false" data-tab="events">执行过程</button></div><button id="download-report" class="text-button" hidden>↓ 下载报告</button></div>
             <div id="empty-state" class="empty-state"><p>提交问题后，这里会显示调查过程与分析结果。</p></div><div id="summary" class="tab-content" hidden></div><div id="evidence" class="tab-content" hidden></div><div id="events" class="tab-content" hidden></div>
           </section>
+          <template id="recommendation-template">
+            <section class="recommendation" aria-label="整改建议">
+              <h3>整改建议（Action Recommendation）</h3>
+              <strong class="recommendation-status"></strong>
+              <p class="recommendation-description"></p>
+              <p class="recommendation-reason"></p>
+            </section>
+          </template>
           <!-- 工单业务状态与本次执行状态分开；没有把补充说明直接当成已核验事实。 -->
           <section id="review-panel" class="review-panel" hidden aria-label="人工核验工单">
             <div class="review-heading"><h2>人工核验工单</h2><span id="review-status" class="badge warn"></span></div>
@@ -72,7 +157,7 @@
         <section class="composer-area" aria-label="发起调查"><form id="investigation-form" class="composer">
           <label for="question" class="sr-only">你想了解什么？</label><textarea id="question" name="question" rows="2" maxlength="2000" required placeholder="告诉花迹你想了解什么，例如：99红玫10月25日取消率，或上周日销量下降原因"></textarea>
           <div class="composer-bottom"><div class="composer-mode"><span class="mode-dot"></span>经营调查<span class="mode-divider">/</span><span class="readonly-label">只读</span></div><div class="send-group"><span class="send-hint">Enter 发送 · Shift+Enter 换行</span><button type="button" class="send-button stop-button" id="stop-request" aria-label="停止本次请求" title="停止本次请求" hidden>■</button><button type="submit" class="send-button" id="submit" aria-label="开始调查" title="开始调查"><svg class="icon"><use href="#i-arrow"/></svg></button></div></div>
-        </form><p class="composer-disclaimer">花迹帮你整理线索，经营判断由你掌握。</p></section>
+        </form></section>
       </div>
 
     </div>
@@ -82,9 +167,17 @@
         <details class="product-title"><summary>商品完整标题</summary><p id="detail-product-title">选择商品后查看完整标题。</p></details>
         <details class="context-used"><summary>本轮经营背景 <span id="context-used-count">0</span></summary><div id="context-used-list"></div></details><button type="button" id="save-task-context" class="text-button">保存经营背景 ↗</button><section class="inspector-section"><h3>数据来源 <span id="source-count">0 / 4</span></h3><div id="source-list" class="source-list"></div><p class="inspector-note">按工具实际返回记录显示，缺失数据不会当作零值。</p></section>
         <section class="inspector-section"><h3>调查产物 <span id="artifact-count">0</span></h3><div id="artifact-list" class="artifact-list"><p class="inspector-note">调查完成后可下载报告和证据。</p></div></section>
-        <div class="inspector-footer"><span>◇</span><p>可追溯的每一步<small>原问题 → 任务 → 工具 → 证据 → 报告</small></p></div>
       </aside>
   </main>
   <script src="/conversation.js" defer></script>
-<dialog id="account-settings-dialog" class="account-dialog" aria-labelledby="account-settings-title"><div class="settings-dialog-heading"><div><p class="eyebrow">HUAJI / CONNECTION</p><h2 id="account-settings-title">账号与 API 设置</h2></div><button type="button" id="close-account-settings" class="icon-button" aria-label="关闭账号设置">×</button></div><p class="account-note">当前为本地工作区，没有云端注册账号。昵称保存在本机；DeepSeek 使用 API 密钥鉴权。</p><form id="model-settings-form"><label>本地昵称<input id="model-nickname" maxlength="40" required></label><label>服务商<input value="DeepSeek · https://api.deepseek.com" readonly></label><label>模型<select id="model-name"><option value="deepseek-flash">deepseek-flash</option><option value="deepseek-v4-pro">deepseek-v4-pro</option></select></label><label>API 密钥<input id="model-api-key" type="password" autocomplete="new-password" placeholder="留空保留已有密钥"></label><label class="model-enabled"><input type="checkbox" id="model-enabled">销量变化调查启用模型工具调用</label><p id="model-configuration-state" class="account-note"></p><div class="account-actions"><button type="submit" class="primary">保存设置</button><button type="button" id="test-model-connection" class="text-button">测试连接与工具调用</button></div></form><details id="store-context-panel" class="context-editor"><summary>本店经营背景 <small>按需检索 · 人工确认后生效</small></summary><p id="context-store-label" class="account-note"></p><div id="context-conflict-list"></div><div id="context-memory-list"></div><form id="context-memory-form"><label>记住哪类事项<select id="context-slot"><option value="night_ads_strategy">夜间投放策略</option><option value="budget_policy">推广费用约定</option><option value="response_preference">汇报偏好</option><option value="product_context">商品经营背景</option><option value="period_observation">阶段观察（需已完成来源调查）</option></select></label><label>适用商品<select id="context-sku"><option value="">本店全部商品</option></select></label><label>背景内容<textarea id="context-content" maxlength="400" rows="3" required placeholder="填写已核实的经营约定，不把推测结论直接记成事实"></textarea></label><label>来源说明<input id="context-source" maxlength="120" required placeholder="例如：运营负责人确认、本地经营配置"></label><div class="context-dates"><label>生效日期<input type="date" id="context-from" required></label><label>到期日期<input type="date" id="context-expiry" required></label></div><p id="context-source-task" class="account-note"></p><button type="submit" class="primary">保存为待确认背景</button></form><p id="context-notice" role="status" class="account-note"></p></details><details class="workspace-access-settings"><summary>工作区访问口令</summary><p class="account-note">用于连接已设置访问保护的工作台，和 DeepSeek 密钥不同。</p><input id="workspace-access-token" type="password" autocomplete="off" aria-label="工作区访问口令"><button id="connect-workspace" type="button" class="text-button">连接工作区</button></details><p id="model-settings-notice" role="status" class="account-note"></p></dialog></body>
+<dialog id="account-settings-dialog" class="account-dialog" aria-labelledby="account-settings-title"><div class="settings-dialog-heading"><div><h2 id="account-settings-title">账号与 API 设置</h2></div><button type="button" id="close-account-settings" class="icon-button" aria-label="关闭账号设置">×</button></div><p class="account-note">当前为本地工作区，没有云端注册账号。昵称保存在本机；DeepSeek 使用 API 密钥鉴权。</p><form id="model-settings-form"><label>本地昵称<input id="model-nickname" maxlength="40" required></label><label>服务商<input value="DeepSeek · https://api.deepseek.com" readonly></label><label>模型<select id="model-name"><option value="deepseek-flash">deepseek-flash</option><option value="deepseek-v4-pro">deepseek-v4-pro</option></select></label><label>API 密钥<input id="model-api-key" type="password" autocomplete="new-password" placeholder="留空保留已有密钥"></label><label class="model-enabled"><input type="checkbox" id="model-enabled">销量变化调查启用模型工具调用</label><p id="model-configuration-state" class="account-note"></p><div class="account-actions"><button type="submit" class="primary">保存设置</button><button type="button" id="test-model-connection" class="text-button">测试连接与工具调用</button></div></form><details id="approval-policy-panel" class="context-editor">
+<summary>门店审批规则</summary>
+<p id="approval-policy-store" class="account-note"></p>
+<form id="approval-policy-form">
+<label>最低成交价比例（%，85 表示 8.5 折）<input id="approval-min-discount" type="number" min="0" max="100" step="1" required></label>
+<label>单次广告预算上限（元）<input id="approval-max-budget" type="number" min="0" max="1000000" step="0.01" required></label>
+<button id="save-approval-policy" type="submit" class="primary" disabled>保存本店规则</button>
+</form>
+<p id="approval-policy-notice" class="account-note" role="status"></p>
+</details><details id="store-context-panel" class="context-editor"><summary>本店经营背景 <small>按需检索 · 人工确认后生效</small></summary><p id="context-store-label" class="account-note"></p><div id="context-conflict-list"></div><div id="context-memory-list"></div><form id="context-memory-form"><label>记住哪类事项<select id="context-slot"><option value="night_ads_strategy">夜间投放策略</option><option value="budget_policy">推广费用约定</option><option value="response_preference">汇报偏好</option><option value="product_context">商品经营背景</option><option value="period_observation">阶段观察（需已完成来源调查）</option></select></label><label>适用商品<select id="context-sku"><option value="">本店全部商品</option></select></label><label>背景内容<textarea id="context-content" maxlength="400" rows="3" required placeholder="填写已核实的经营约定，不把推测结论直接记成事实"></textarea></label><label>来源说明<input id="context-source" maxlength="120" required placeholder="例如：运营负责人确认、本地经营配置"></label><div class="context-dates"><label>生效日期<input type="date" id="context-from" required></label><label>到期日期<input type="date" id="context-expiry" required></label></div><p id="context-source-task" class="account-note"></p><button type="submit" class="primary">保存为待确认背景</button></form><p id="context-notice" role="status" class="account-note"></p></details><details class="workspace-access-settings"><summary>工作区访问口令</summary><p class="account-note">用于连接已设置访问保护的工作台，和 DeepSeek 密钥不同。</p><input id="workspace-access-token" type="password" autocomplete="off" aria-label="工作区访问口令"><button id="connect-workspace" type="button" class="text-button">连接工作区</button></details><p id="model-settings-notice" role="status" class="account-note"></p></dialog></body>
 </html>

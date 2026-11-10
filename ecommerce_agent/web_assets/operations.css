@@ -91,3 +91,258 @@ html[data-theme="dark"] .ad-alert,html[data-theme="dark"] .check-result{backgrou
 html[data-theme="dark"] .composer,html[data-theme="dark"] .metric,html[data-theme="dark"] .access-panel,html[data-theme="dark"] .inspector{background:#1b2017;border-color:#3d4631}html[data-theme="dark"] .composer textarea{background:transparent;color:#eee6d0}html[data-theme="dark"] .optional-fields{background:#252c1e;border-color:#414b34}html[data-theme="dark"] .quality-note,html[data-theme="dark"] .material-record{background:#252b20;color:#cfc5aa;border-color:#48533b}html[data-theme="dark"] .task-context strong,html[data-theme="dark"] .metric-number,html[data-theme="dark"] .finding-label,html[data-theme="dark"] .assistant-heading h2,html[data-theme="dark"] .context-list dd{color:#ece2c9}html[data-theme="dark"] .task-context small,html[data-theme="dark"] .metric-label,html[data-theme="dark"] .metric small,html[data-theme="dark"] .finding p,html[data-theme="dark"] .next-check,html[data-theme="dark"] .limits,html[data-theme="dark"] .source-row,html[data-theme="dark"] .source-status,html[data-theme="dark"] .inspector-note,html[data-theme="dark"] .product-title,html[data-theme="dark"] .product-title p,html[data-theme="dark"] .artifact-item strong{color:#bdb49e}html[data-theme="dark"] .history-item{color:#c7bea8}html[data-theme="dark"] .history-item.selected,html[data-theme="dark"] .history-item:hover{background:#303322;color:#edd28e}html[data-theme="dark"] .history-item strong{color:inherit}html[data-theme="dark"] .history-item small{color:#ab9e80}html[data-theme="dark"] .sample{background:#22281b;border-color:#454d34}html[data-theme="dark"] .sample strong,html[data-theme="dark"] .intro h1{color:#e8d6aa}html[data-theme="dark"] .intro-copy{color:#beb295}html[data-theme="dark"] .candidate-button{background:#303824;border-color:#586540;color:#e5d4a9}html[data-theme="dark"] .source-symbol,html[data-theme="dark"] .artifact-icon{background:#2b3321;color:#dcc48b}html[data-theme="dark"] .text-button,html[data-theme="dark"] .tabs button[aria-selected="true"]{color:#edce7f}html[data-theme="dark"] .event-row{border-color:#3d4830;color:#c7bda6}
 @media(max-width:1200px){.store-cards{grid-template-columns:repeat(2,minmax(0,1fr))}.settings-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.operations-view{padding:27px 22px}.followup-columns{grid-template-columns:minmax(220px,.7fr) minmax(0,1.4fr)}}
 @media(max-width:800px){.followup-columns{grid-template-columns:minmax(0,1fr)}.store-cards{grid-template-columns:minmax(0,1fr)}.operations-view{padding:24px 16px}.featured-products{grid-template-columns:minmax(0,1fr)}.store-card,.operating-card{padding:18px}.overview-brand{width:47px;height:55px}.theme-toggle{font-size:12px;padding:5px 7px}}
+
+/* Business navigation: fixed context and settings, independently scrollable history. */
+/* Match the CRM demo's typography scale within the Flower sidebar. */
+.sidebar {
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Inter,
+    "PingFang SC", "Microsoft YaHei", sans-serif;
+}
+
+.sidebar .brand {
+  font-family: inherit;
+  font-size: 1.125rem;
+  font-weight: 600;
+  letter-spacing: -.025em;
+}
+
+.sidebar .store-switch label,
+.sidebar .history-heading,
+.sidebar .history-item small {
+  font-size: .75rem;
+  font-weight: 500;
+  line-height: 1.4;
+  letter-spacing: 0;
+}
+
+.sidebar .store-switch select,
+.sidebar .new-task,
+.sidebar .sidebar-bottom,
+.sidebar .history-item strong {
+  font-family: inherit;
+  font-size: .875rem;
+  line-height: 1.3;
+}
+
+.sidebar .store-switch select {
+  font-weight: 400;
+  line-height: 1.5;
+}
+
+.sidebar .new-task,
+.sidebar .history-item strong {
+  font-weight: 600;
+}
+
+.sidebar .sidebar-context,
+.sidebar .sidebar-bottom {
+  flex: none;
+}
+
+.sidebar .store-switch {
+  margin: 13px 5px 0;
+}
+
+.sidebar .store-switch label:not(:first-child) {
+  margin-top: 9px;
+}
+
+.sidebar .store-switch label {
+  margin-bottom: 4px;
+}
+
+.sidebar .store-switch select {
+  padding-block: 7px;
+}
+
+.sidebar .new-task {
+  margin-top: 12px;
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+html[data-theme="dark"] .sidebar .new-task {
+  background: #302e21;
+  border-color: #6d5931;
+  color: #f5d789;
+}
+
+.sidebar .new-task .icon {
+  color: currentColor;
+}
+
+.sidebar .new-task:hover {
+  filter: brightness(1.12);
+}
+
+.sidebar .workspace-nav {
+  display: grid;
+  gap: 2px;
+  margin: 5px 0 0;
+  padding-inline: 4px;
+  min-height: 0;
+  overflow: auto;
+  scrollbar-width: thin;
+}
+
+.sidebar .sidebar-group > summary {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 8px;
+  padding: 5px 11px;
+  color: var(--muted);
+  font-size: .75rem;
+  font-weight: 500;
+  line-height: 1.4;
+  cursor: pointer;
+  list-style: none;
+}
+
+html[data-theme="dark"] .sidebar .sidebar-group > summary {
+  color: #a0a5b0;
+}
+
+.sidebar .sidebar-group > summary::-webkit-details-marker {
+  display: none;
+}
+
+.sidebar .sidebar-group > summary::after {
+  content: "";
+  width: 5px;
+  height: 5px;
+  margin-left: auto;
+  margin-right: 2px;
+  border: solid currentColor;
+  border-width: 0 1px 1px 0;
+  transform: rotate(-45deg);
+}
+
+.sidebar .sidebar-group[open] > summary::after {
+  transform: translateY(-2px) rotate(45deg);
+}
+
+.sidebar .workspace-nav > button {
+  width: 100%;
+  padding: 7px 16px;
+  position: relative;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 9px;
+  font-family: inherit;
+  font-size: 1rem;
+  line-height: 1.3;
+}
+
+.sidebar .workspace-nav > button > span {
+  font: inherit;
+  color: inherit;
+}
+
+.sidebar .workspace-nav > button:enabled:hover {
+  box-shadow: inset 0 0 0 1px currentColor;
+}
+
+.sidebar .workspace-nav .icon,
+.sidebar .sidebar-group > summary .icon,
+.sidebar .new-task .icon {
+  width: 16px;
+  height: 16px;
+  stroke-width: 1.6;
+}
+
+.sidebar .workspace-nav > button:disabled {
+  opacity: .55;
+  cursor: default;
+}
+
+.sidebar .sidebar-divider {
+  width: 100%;
+  margin: 5px 0;
+  border: 0;
+  border-top: 1px solid var(--line);
+}
+
+.sidebar .workspace-nav > button.selected::before {
+  content: '';
+  position: absolute;
+  inset: 5px auto 5px 4px;
+  width: 3px;
+  border-radius: 2px;
+  background: currentColor;
+}
+
+.sidebar .sidebar-history {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  min-height: 0;
+  margin-top: auto;
+  border-top: 1px solid var(--line);
+}
+
+.sidebar .sidebar-history:has(.sidebar-group[open]) {
+  flex: 1 0 72px;
+  margin-top: 6px;
+}
+
+.sidebar .sidebar-history .sidebar-group[open],
+.sidebar .sidebar-history .sidebar-group[open]::details-content {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.sidebar .history-heading {
+  flex: none;
+  margin: 0 11px;
+}
+
+.sidebar .history-list {
+  margin-top: 3px;
+  overscroll-behavior: contain;
+}
+
+.sidebar .sidebar-bottom {
+  margin-top: 8px;
+  padding: 9px 8px 0;
+  border-top-color: var(--line);
+  color: var(--text);
+}
+
+html[data-theme="dark"] .sidebar .sidebar-divider,
+html[data-theme="dark"] .sidebar .sidebar-history {
+  border-color: rgb(160 165 176 / 14%);
+}
+
+html[data-theme="dark"] .sidebar .sidebar-bottom {
+  border-color: #34382d;
+}
+
+html[data-theme="dark"] .sidebar .sidebar-bottom {
+  color: #bdb6a2;
+}
+
+@media (max-height: 620px) {
+  .sidebar {
+    padding-block: 12px;
+  }
+}
+
+/* 结案报告末尾的整改建议和规则核验结果。 */
+.recommendation {
+  margin-top: 18px;
+  padding: 12px 14px;
+  border: 1px solid currentColor;
+  border-inline-start-width: 3px;
+  border-radius: 8px;
+}
+
+.recommendation p { margin: 6px 0 0; color: inherit; }
+.recommendation h3 { margin: 0 0 6px; color: inherit; }
+.recommendation--blocked { color: #972b32; background: #fff0f0; }
+.recommendation--approved { color: #216343; background: #eef8f1; }
+html[data-theme="dark"] .recommendation--blocked { color: #ffc0c3; background: #382323; }
+html[data-theme="dark"] .recommendation--approved { color: #b4e6c8; background: #203529; }

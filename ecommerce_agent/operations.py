@@ -10,6 +10,7 @@ from datetime import date
 from decimal import Decimal
 
 from .clock import utc_now
+from .guardrails.policy_checker import policy_limits
 from .task_parser import shanghai_today
 
 SCHEMA="""
@@ -53,11 +54,51 @@ class StoreOperations:
         """绑定单店服务；推广账本由StoreHub启动时注入，不接受HTTP文件路径。"""
         self.service,self.book=service,None
 
-    def settings(self):
+    def settings(self, db=None):
         """返回有版本的明确配置；营业时间仅作档案，不重算历史监测数据。"""
-        with self.service.connection() as db:
-            row=db.execute("SELECT revision,document FROM operating_settings WHERE id=1").fetchone()
+        if db is None:
+            with self.service.connection() as connection:
+                return self.settings(connection)
+        row=db.execute("SELECT revision,document FROM operating_settings WHERE id=1").fetchone()
         return {"revision":row[0],**json.loads(row[1])} if row else {"revision":0,"open_time":"09:00","close_time":"23:00","high_pct":10,"low_pct":3,"featured_skus":[],"notes":""}
+
+    def approval_policy(self, db=None):
+        """返回当前门店的审批阈值和设置版本，审批可复用同一事务。"""
+        if db is None:
+            with self.service.connection() as connection:
+                return self.approval_policy(connection)
+        row = db.execute("SELECT revision,document FROM operating_settings WHERE id=1").fetchone()
+        config = json.loads(row[1]) if row else {}
+        return {'revision': row[0] if row else 0, **policy_limits(config.get('approval_policy'))}
+
+    def save_approval_policy(self, payload):
+        """保存本店策略，检查版本并追加原有设置审计记录。预算以分保存。"""
+        if not isinstance(payload, dict) or set(payload) != {'expected_revision', 'min_discount_percent', 'max_ad_budget_cents'}:
+            raise ValueError('请完整提交审批规则和版本。')
+        minimum, maximum = payload['min_discount_percent'], payload['max_ad_budget_cents']
+        if type(minimum) is not int or not 0 <= minimum <= 100:
+            raise ValueError('最低成交价比例须为 0–100 的整数百分比。')
+        if type(maximum) is not int or not 0 <= maximum <= 100_000_000:
+            raise ValueError('广告预算上限须为 0–100 万元，最多两位小数。')
+        with self.service.connection() as db:
+            db.execute('BEGIN IMMEDIATE')
+            current = self.approval_policy(db)
+            if type(payload['expected_revision']) is not int or payload['expected_revision'] != current['revision']:
+                raise OperatingConflict('门店设置已变化，请刷新后保存。')
+            document = self.settings(db)
+            document.pop('revision')
+            document['approval_policy'] = policy_limits(payload)
+            revision = self._write_settings(db, document, current['revision'])
+            return {'revision': revision, **document['approval_policy']}
+
+    def _write_settings(self, db, document, revision):
+        """在调用方持有写事务时保存配置与审计。"""
+        row = db.execute('SELECT document FROM operating_settings WHERE id=1').fetchone()
+        value = json.dumps(document, ensure_ascii=False)
+        db.execute('INSERT OR REPLACE INTO operating_settings VALUES(1,?,?)', (revision+1, value))
+        db.execute('INSERT INTO operating_settings_events(created_at,previous,current) VALUES(?,?,?)',
+                   (utc_now(), row[0] if row else '{}', value))
+        return revision+1
 
     def save_settings(self,payload):
         """验证时间、阈值、主推SKU及版本；不把配置修改冒充广告预算执行。"""
@@ -81,10 +122,12 @@ class StoreOperations:
             row=db.execute("SELECT revision,document FROM operating_settings WHERE id=1").fetchone()
             revision=row[0] if row else 0
             if type(payload["expected_revision"]) is not int or payload["expected_revision"]!=revision:raise OperatingConflict("门店设置已变化，请刷新后保存。")
-            value=json.dumps(document,ensure_ascii=False)
-            db.execute("INSERT OR REPLACE INTO operating_settings VALUES(1,?,?)",(revision+1,value))
-            db.execute("INSERT INTO operating_settings_events(created_at,previous,current) VALUES(?,?,?)",(utc_now(),row[1] if row else "{}",value))
-        return {"revision":revision+1,**document}
+            if row:
+                prior = json.loads(row[1])
+                if 'approval_policy' in prior:
+                    document['approval_policy'] = prior['approval_policy']
+            revision = self._write_settings(db, document, revision)
+        return {"revision":revision,**document}
 
     def event(self,db,fid,kind,**payload):
         """处理说明和复查证据分别追加，来源快照与旧结论不覆盖。"""

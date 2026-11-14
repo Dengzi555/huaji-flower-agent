@@ -26,7 +26,7 @@ class ModelSettingsTests(unittest.TestCase):
         self.model.save({'api_key':'','model':'deepseek-v4-pro'})
         with patch.dict('os.environ',{},clear=True):self.assertEqual(self.model.key(),key)
         self.assertNotIn(key,(self.root/'config.local.json').read_text(encoding='utf-8'))
-        with self.assertRaises(ValueError):self.model.save({'base_url':'https://other.test'})
+        with self.assertRaises(ValueError):self.model.save({'base_url':'http://other.test'})
         with self.assertRaises(ValueError):self.model.save({'api_key':'bad\nvalue'})
 
     def test_local_api_guards_and_task_snapshot(self):

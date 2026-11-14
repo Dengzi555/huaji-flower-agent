@@ -32,6 +32,7 @@
     </div>
     <nav class="workspace-nav" aria-label="经营模块">
       <button type="button" id="nav-investigation" class="selected"><svg class="icon" aria-hidden="true"><use href="#i-investigate"/></svg><span>AI 智能调查</span></button>
+      <button type="button" id="nav-product-builder"><svg class="icon" aria-hidden="true"><use href="#i-drafts"/></svg><span>商品基建助手</span></button>
       <button type="button" id="nav-approval-drafts"><svg class="icon" aria-hidden="true"><use href="#i-drafts"/></svg><span>待办与审批草稿</span></button>
       <hr class="sidebar-divider">
       <button type="button" id="nav-radar"><svg class="icon" aria-hidden="true"><use href="#i-radar"/></svg><span>风险雷达</span></button>
@@ -51,6 +52,33 @@
   </aside>
   <main>
     <header class="topbar"><div class="breadcrumb"><button id="toggle-sidebar" class="icon-button" aria-label="切换调查导航" aria-controls="sidebar" aria-expanded="true"><svg class="icon"><use href="#i-panel"/></svg></button><span>经营调查</span><span class="slash">/</span><strong id="session-title">新调查</strong></div><div class="topbar-right"><button id="theme-toggle" class="theme-toggle" type="button" aria-label="切换为暗色主题">☾ 暗色</button><span id="mode-badge" class="badge" hidden></span><button id="toggle-inspector" class="icon-button" aria-label="切换任务详情" aria-controls="inspector" aria-expanded="false"><svg class="icon"><use href="#i-panel"/></svg></button></div></header>
+
+    <section id="product-builder-view" class="operations-view product-builder" hidden aria-labelledby="pb-title">
+      <header class="pb-header"><div><span class="pb-eyebrow">PRODUCT STUDIO</span><h1 id="pb-title">商品基建助手</h1></div><span class="pb-demo">视觉识图</span></header>
+      <div class="pb-upload-heading"><h2>智能识图与结构化命名</h2><label for="pb-holiday">门店节日 / 活动 <select id="pb-holiday"><option value="">无</option><option value="情人节">情人节</option><option value="母亲节">母亲节</option></select></label></div>
+      <input id="pb-file" type="file" accept="image/jpeg,image/png,image/webp" hidden>
+      <button id="pb-drop" type="button" class="pb-drop" aria-describedby="pb-upload-note">
+        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true"><path d="M12 16V3m-5 5 5-5 5 5M4 15v5a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-5"/></svg>
+        <strong>将鲜花图片拖拽至此，AI 将自动提取花材并生成标题</strong><span>点击选择图片 · JPG / PNG / WebP · 最大 10 MB</span>
+      </button>
+      <p id="pb-upload-note" class="pb-note">图片将发送至已配置的视觉模型，花材与数量请核对后使用。</p>
+      <p id="pb-status" class="pb-status" role="status" aria-live="polite"></p>
+      <div id="pb-results" hidden>
+        <div class="pb-result-heading"><div class="pb-image-wrap"><img id="pb-preview" alt="上传的鲜花图片预览"><div><strong id="pb-filename"></strong><p id="pb-result-note" class="pb-note"></p></div></div><div class="pb-result-actions"><button id="pb-retry" type="button" class="pb-secondary">重新识别</button><button id="pb-restore" type="button" class="pb-secondary">恢复识别标签</button></div></div>
+        <div class="pb-section-heading"><h2>结构化命名</h2><div class="pb-sort-actions"><span>拖动标题栏或卡片空白调整顺序</span><button id="pb-reset-order" type="button" class="pb-secondary">恢复默认排序</button></div></div>
+        <div id="pb-tags" class="pb-dimensions"></div>
+        <div class="pb-title-card"><div class="pb-section-heading"><h2>完整商品标题</h2><span id="pb-count">0 字</span></div><div class="pb-copy-row"><p id="pb-title-preview" aria-live="polite"></p><button id="pb-copy" type="button" class="pb-copy"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><rect x="8" y="8" width="12" height="13" rx="2"/><path d="M16 8V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h3"/></svg><span>复制标题</span></button></div></div>
+      </div>
+      <section class="pb-audit" aria-labelledby="pb-audit-title">
+        <div class="pb-upload-heading"><div><h2 id="pb-audit-title">商品基建巡检列表</h2><p class="pb-note">检查当前门店的商品命名与打标</p></div><button id="pb-audit-scan" type="button" class="pb-copy">批量扫描未达标商品</button></div>
+        <p id="pb-audit-status" class="pb-status" role="status" aria-live="polite">点击扫描，读取当前门店商品。</p>
+        <div class="pb-audit-table">
+          <table><caption class="pb-visually-hidden">当前门店商品巡检结果</caption><thead><tr><th scope="col">商品 ID</th><th scope="col">当前标题</th><th scope="col">巡检问题</th><th scope="col">状态</th><th scope="col">操作</th></tr></thead><tbody id="pb-audit-rows"><tr><td colspan="5">尚未扫描</td></tr></tbody></table>
+        </div>
+      </section>
+      <div id="pb-toast" class="pb-toast" role="status" aria-live="polite" hidden></div>
+    </section>
+
     <section id="schedule-view" class="operations-view ops-board" hidden aria-labelledby="schedule-title">
       <div class="schedule-header">
         <h1 id="schedule-title">运营日程</h1>
@@ -170,7 +198,18 @@
       </aside>
   </main>
   <script src="/conversation.js" defer></script>
-<dialog id="account-settings-dialog" class="account-dialog" aria-labelledby="account-settings-title"><div class="settings-dialog-heading"><div><h2 id="account-settings-title">账号与 API 设置</h2></div><button type="button" id="close-account-settings" class="icon-button" aria-label="关闭账号设置">×</button></div><p class="account-note">当前为本地工作区，没有云端注册账号。昵称保存在本机；DeepSeek 使用 API 密钥鉴权。</p><form id="model-settings-form"><label>本地昵称<input id="model-nickname" maxlength="40" required></label><label>服务商<input value="DeepSeek · https://api.deepseek.com" readonly></label><label>模型<select id="model-name"><option value="deepseek-flash">deepseek-flash</option><option value="deepseek-v4-pro">deepseek-v4-pro</option></select></label><label>API 密钥<input id="model-api-key" type="password" autocomplete="new-password" placeholder="留空保留已有密钥"></label><label class="model-enabled"><input type="checkbox" id="model-enabled">销量变化调查启用模型工具调用</label><p id="model-configuration-state" class="account-note"></p><div class="account-actions"><button type="submit" class="primary">保存设置</button><button type="button" id="test-model-connection" class="text-button">测试连接与工具调用</button></div></form><details id="approval-policy-panel" class="context-editor">
+<dialog id="account-settings-dialog" class="account-dialog" aria-labelledby="account-settings-title"><div class="settings-dialog-heading"><div><h2 id="account-settings-title">账号与 API 设置</h2></div><button type="button" id="close-account-settings" class="icon-button" aria-label="关闭账号设置">×</button></div><p class="account-note">统一配置经营调查与商品识图服务，API 密钥保存在本机。</p><form id="model-settings-form"><h3>经营调查与对话</h3><label>本地昵称<input id="model-nickname" maxlength="40" required></label><label>API Base URL<input id="model-base-url" type="url" required placeholder="https://api.deepseek.com"></label><label>模型 ID<input id="model-name" maxlength="200" required placeholder="填写供应商提供的模型 ID"></label><label>API 密钥<input id="model-api-key" type="password" autocomplete="new-password" placeholder="留空保留已有密钥"></label><label class="model-enabled"><input type="checkbox" id="model-enabled">销量变化调查启用模型工具调用</label><p id="model-configuration-state" class="account-note"></p><div class="account-actions"><button type="submit" class="primary">保存设置</button><button type="button" id="test-model-connection" class="text-button">测试连接与工具调用</button></div></form>
+<form id="vision-settings-form">
+  <h3>商品识图与标题修正</h3>
+  <label>API Base URL<input id="vision-base-url" type="url" required placeholder="https://dashscope.aliyuncs.com/compatible-mode/v1"></label>
+  <label>模型 ID<input id="vision-model" maxlength="200" required placeholder="例如 qwen3-vl-plus"></label>
+  <label>API 密钥<input id="vision-api-key" type="password" autocomplete="new-password" placeholder="留空保留已有密钥"></label>
+  <label>请求超时（秒）<input id="vision-timeout" type="number" min="1" max="60" step="any" required value="45"></label>
+  <p id="vision-configuration-state" class="account-note"></p>
+  <div class="account-actions"><button type="submit" class="primary">保存识图设置</button><button id="test-vision-connection" type="button" class="text-button">测试图片识别连接</button></div>
+  <p id="vision-settings-notice" class="account-note" role="status"></p>
+</form>
+<details id="approval-policy-panel" class="context-editor">
 <summary>门店审批规则</summary>
 <p id="approval-policy-store" class="account-note"></p>
 <form id="approval-policy-form">

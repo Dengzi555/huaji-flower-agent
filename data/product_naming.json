@@ -1,0 +1,15 @@
+{
+  "default": {
+    "style": "温柔浪漫、简洁自然，前缀使用四个汉字",
+    "holiday": "",
+    "delivery_suffix": "花店送花上门"
+  },
+  "stores": {
+    "hx-sz-ns": {
+      "style": "都市浪漫，前缀使用四个汉字，避免夸张承诺"
+    },
+    "hx-cq-na": {
+      "style": "自然清新，前缀使用四个汉字"
+    }
+  }
+}

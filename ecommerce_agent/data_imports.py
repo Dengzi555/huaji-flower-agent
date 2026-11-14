@@ -203,6 +203,7 @@ class DataImports:
                 for external,sku in preview['product_map'].items():db.execute('INSERT OR REPLACE INTO import_product_mappings VALUES(?,?,?)',(row['kind'],external,sku))
             self.service.store,self.service.catalog,self.service.fingerprint=new_store,new_catalog,digest
             self.service._dataset=(new_store,new_catalog,digest)
+            self.service.product_maintenance.restore()
         return {'version_id':version,'fingerprint':digest,'reused':False,'imported_rows':preview['valid_rows']}
 
     def cancel(self,identity):

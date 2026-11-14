@@ -1,8 +1,17 @@
 # 花迹｜多门店经营调查 Agent
 
-花迹面向鲜花闪购门店的经营排查。输入「99 红玫 10 月 25 日为什么卖少了？」或从风险雷达选择一条预警，系统会锁定门店、商品和日期，查询经营记录，交付一份可复核的调查报告。涉及促销或投放的整改建议经过规则核验后，进入人工审批。
+花迹面向多门店鲜花闪购运营，将商品维护、经营预警、异常调查和整改审批集中在一个工作台。输入「99 红玫 10 月 25 日为什么卖少了？」或从风险雷达发起调查，系统会确认门店、商品和日期，查询经营记录，生成附带证据的报告；促销与投放建议经过规则核验后进入人工审批。
 
 **技术栈**　Python 3.11+、SQLite、原生 JavaScript、Tool Calling、DeepSeek API（可选）、unittest。Web 工作台使用 Python 标准库，启动时无需前端构建或 Docker。
+
+## 能做什么
+
+- **查经营**：用自然语言查询和对比销量、流量、库存、活动及推广指标，回答绑定具体门店、商品与日期。
+- **查异常**：风险雷达汇总预警，一键发起调查；工具结果与原始快照一起保存，可回看证据和结案过程。
+- **控整改**：折扣、预算建议经过程序校验，再由运营人员批准或驳回；模型不直接改价或投放。
+- **维护商品**：上传商品图，识别可见花材、数量与商品形态，生成可编辑标题和标签；不确定事实留空，营销建议单独处理。
+- **巡检目录**：检查标题与标签缺项，按原始商品事实生成修正候选；保存版本及修改历史，重启后恢复，不覆盖历史任务证据。
+- **管理配置**：页面分别配置文本和视觉模型，密钥不回显；图片识别和商品修正使用独立视觉配置。
 
 ## 界面预览
 
@@ -58,6 +67,8 @@ python -X utf8 -m ecommerce_agent web --host 127.0.0.1 --port 8080
 
 内置经营样例支持离线体验规则查询和调查流程。在 **系统设置与 API 配置** 中填写 DeepSeek API Key，即可启用模型工具调用。
 
+商品图片识别和模型修正需额外配置支持图片输入的兼容模型。可在设置页填写视觉模型，或参考根目录 `.env.example`；未配置时仍可使用离线经营查询，识图入口会提示所缺配置。[商品维护说明](docs/product-management.md)。
+
 ```bash
 # 离线演示
 python -X utf8 -m ecommerce_agent demo
@@ -80,13 +91,15 @@ python -X utf8 -m ecommerce_agent briefing --data data/sample.json --date 2026-1
 
 | 检查 | 记录结果 | 样本和口径 |
 | --- | --- | --- |
-| 本地回归 | **538 项通过** | 含年度合成快照的工作区，使用下方 unittest 命令 |
+| 本地回归 | 使用下方命令运行当前版本 | 包含配置、图片解析、商品修订、任务执行与证据核验；通过数随版本变化 |
 | 路由对照 | 规则 **61/72**，直接模型 **70/72**，混合 **71/72** | 72 条自建配对样本，模型调用分别为 **0 / 59 / 18 次**，统计单位为调用次数 |
 | 雷达降噪 | **762 → 2 条**库存预警 | 同一默认门店、同一份 7 日年度模拟快照重扫，统计告警量 |
 | 规则拦截 | **8/8** 条非合规建议被拦截，**0/7** 条合规建议被误拦截 | 15 条标注样例，覆盖折扣、预算边界与非法参数 |
 | 主快照端到端 | 红玫瑰 **12 → 5 件**触发跌幅预警 | 使用只读年度快照记录构造隔离用例，验证 SQLite、HTTP 返回和调查参数 |
 
 评测基于合成经营快照和自建任务样本。
+
+表中路由、降噪与策略结果是已有实验记录，未把新功能回归数量当作线上业务提升；商品识别与标题修正也尚无真实门店准确率结论。
 
 ```bash
 python -m pip install "pydantic>=2" "pyyaml>=6"
@@ -111,6 +124,7 @@ python -X utf8 -m ecommerce_agent.annual_data
 | 工具和原始字段核验 | [`tools.py`](ecommerce_agent/tools.py)、[`verification.py`](ecommerce_agent/verification.py) |
 | 雷达、日程、审批与规则 | [`operations_board.py`](ecommerce_agent/operations_board.py)、[`approval_drafts.py`](ecommerce_agent/approval_drafts.py)、[`policy_checker.py`](ecommerce_agent/guardrails/policy_checker.py) |
 | 网页和后台任务 | [`web.py`](ecommerce_agent/web.py)、[`task_execution.py`](ecommerce_agent/task_execution.py)、[`web_assets/`](ecommerce_agent/web_assets/) |
+| 商品识别与目录维护 | [`product_identification.py`](ecommerce_agent/product_identification.py)、[`product_maintenance.py`](ecommerce_agent/product_maintenance.py)、[`vision_client.py`](ecommerce_agent/vision_client.py) |
 
 只读 MCP 入口可通过 `python -m ecommerce_agent mcp` 启动，提供商品目录检索与销量、流量、库存、活动查询。更多命令可运行 `python -m ecommerce_agent --help`。
 

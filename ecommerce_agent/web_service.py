@@ -29,6 +29,7 @@ from .approval_drafts import ApprovalDrafts, SCHEMA as APPROVAL_DRAFTS_SCHEMA
 from .investigation_worker import freeze_context, run_in_worker
 from .task_repository import TaskRepository,ConflictError
 from .task_execution import TaskExecutor
+from .product_maintenance import ProductMaintenance, SCHEMA as PRODUCT_SCHEMA
 
 
 class InvestigationService:
@@ -62,6 +63,7 @@ class InvestigationService:
             db.executescript(IMPORT_SCHEMA)
             db.executescript(DECISION_SCHEMA)
             db.executescript(APPROVAL_DRAFTS_SCHEMA)
+            db.executescript(PRODUCT_SCHEMA)
             initialize_board(db)
             current=db.execute('SELECT document,catalog,fingerprint FROM workspace_versions ORDER BY rowid DESC LIMIT 1').fetchone()
             if current:
@@ -69,6 +71,8 @@ class InvestigationService:
                 self.catalog=ProductCatalog.from_document(json.loads(current['catalog']),self.store.skus)
                 self.fingerprint=current['fingerprint']
             self._dataset=(self.store,self.catalog,self.fingerprint)
+            self.product_maintenance=ProductMaintenance(self)
+            self.product_maintenance.restore(db)
             self.imports=DataImports(self)
             self.reviews = ReviewCases(self)
             self.decisions = Decisions(self)

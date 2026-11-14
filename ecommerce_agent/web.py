@@ -22,6 +22,8 @@ from .decisions import DecisionConflict, DecisionNotFound
 from .missions import MissionConflict, MissionNotFound
 from .operations import OperatingConflict, OperatingNotFound, overview
 from .conversations import Conversations, ConversationNotFound
+from .product_maintenance import ProductNotFound
+from .vision_client import VisionError
 
 STATIC = Path(__file__).resolve().parent / "web_assets"
 
@@ -208,8 +210,10 @@ def create_server(service, host="127.0.0.1", port=8080, token="", public_hosts=(
                     else:self.send(404,{'error':'评测接口不存在。'})
                 except ValueError as error:self.send(400,{'error':str(error)})
                 return
-            if path == '/api/model-settings':
-                if self.model_access():self.send(200,model_settings.public())
+            if path in ('/api/model-settings', '/api/vision-settings'):
+                if self.model_access():
+                    settings = model_settings.vision if path == '/api/vision-settings' else model_settings
+                    self.send(200, settings.public())
                 return
             try:
                 active = self.workspace()
@@ -226,6 +230,12 @@ def create_server(service, host="127.0.0.1", port=8080, token="", public_hosts=(
                     self.send(200,build_trace(active.output,match[1]))
                 except FileNotFoundError:self.send(404,{'error':'运行记录不存在。'})
                 except ValueError as error:self.send(400,{'error':str(error)})
+                return
+            if path == "/api/product/audit":
+                try:
+                    self.send(200, active.product_maintenance.audit())
+                except Exception:
+                    self.send(500, {"error": "商品巡检暂不可用，请稍后重试。"})
                 return
             if path == "/api/stores":
                 self.send(200, {"stores": service.stores if hasattr(service, "stores") else [],
@@ -338,8 +348,42 @@ def create_server(service, host="127.0.0.1", port=8080, token="", public_hosts=(
             else:
                 self.send(404, {"error": "接口不存在。"})
 
+        def identify_product(self):
+            """接收图片表单，复用同源和口令校验，按请求门店读取命名规则。"""
+            from .product_identification import MAX_UPLOAD_BYTES, identify_product, parse_upload
+            from .vision_client import VisionError
+            try:
+                size = int(self.headers.get("Content-Length", "0"))
+                if not 0 < size <= MAX_UPLOAD_BYTES:
+                    self.send(413, {"error": "图片上传请求不能超过 10 MB 加表单开销。"})
+                    return
+                if self.headers.get_content_type() != "multipart/form-data":
+                    self.send(415, {"error": "请使用 multipart/form-data 上传图片。"})
+                    return
+                body = self.rfile.read(size)
+                if len(body) != size:
+                    raise ValueError("图片上传不完整。")
+                image, mime_type, store_id, holiday = parse_upload(self.headers.get("Content-Type", ""), body)
+                selected = self.headers.get("X-Store-ID")
+                if selected and selected != store_id:
+                    raise ValueError("表单门店与当前门店不一致，请重新上传。")
+                if hasattr(service, "for_store"):
+                    service.for_store(store_id)
+                elif store_id != "local":
+                    raise ValueError("当前工作区仅支持 local 门店。")
+                result = identify_product(STATIC.parent.parent, image, mime_type, store_id, holiday)
+                self.send(200, result)
+            except VisionError as error:
+                self.send(error.status, {"error": str(error)})
+            except (ValueError, TypeError, UnicodeError):
+                self.send(400, {"error": "图片或门店参数无效，请检查上传内容及门店选择。"})
+            except AgentError as error:
+                self.send(504 if error.code == "model_timeout" else 502, {"error": "视觉模型请求失败，请稍后重试。"})
+            except Exception:
+                self.send(502, {"error": "AI 识别失败，请手动添加标签。"})
+
         def do_POST(self):
-            """仅接受受限 JSON 请求；不允许用户从 API 指定文件路径或模型密钥。"""
+            """接收受限 JSON 或图片表单；路径和模型密钥始终由服务端管理。"""
             path = urlsplit(self.path).path
             eval_action=re.fullmatch(r'/api/eval/jobs/([a-f0-9]{32})/(cancel|review)',path)
             review_action = re.fullmatch(r"/api/reviews/([a-f0-9]{32})/(materials|recheck|accept)", path)
@@ -355,10 +399,13 @@ def create_server(service, host="127.0.0.1", port=8080, token="", public_hosts=(
             approval_draft_action = re.fullmatch(r'/api/approval-drafts/([a-f0-9]{32})/decision', path)
             decision_task=re.fullmatch(r'/api/tasks/([a-f0-9]{32})/decision',path)
             decision_action=re.fullmatch(r'/api/decisions/([a-f0-9]{32})/(approve|reject|execute)',path)
-            if path not in ("/api/eval/jobs","/api/tasks","/api/schedule","/api/missions","/api/memory","/api/followups","/api/settings","/api/approval-policy","/api/model-settings","/api/model-test","/api/store-context","/api/conversations","/api/imports/upload") and not eval_action and not review_action and not mission_action and not memory_action and not followup_action and not context_action and not conflict_action and not conversation_action and not import_action and not cancel_request and not cancel_task and not decision_task and not decision_action and not approval_draft_action:
+            if path not in ("/api/eval/jobs","/api/tasks","/api/schedule","/api/missions","/api/memory","/api/followups","/api/settings","/api/approval-policy","/api/model-settings","/api/model-test","/api/store-context","/api/conversations","/api/imports/upload","/api/product/identify","/api/product/audit","/api/product/auto_fix","/api/vision-settings","/api/vision-test") and not eval_action and not review_action and not mission_action and not memory_action and not followup_action and not context_action and not conflict_action and not conversation_action and not import_action and not cancel_request and not cancel_task and not decision_task and not decision_action and not approval_draft_action:
                 self.send(404, {"error": "接口不存在。"})
                 return
             if not self.allowed():
+                return
+            if path == "/api/product/identify":
+                self.identify_product()
                 return
             if self.headers.get("Content-Type", "").split(";")[0] != "application/json":
                 self.send(415, {"error": "请使用 application/json。"})
@@ -372,6 +419,15 @@ def create_server(service, host="127.0.0.1", port=8080, token="", public_hosts=(
                     return
                 payload = json.loads(self.rfile.read(size))
                 if not isinstance(payload,dict):raise ValueError('请求需为JSON对象。')
+                if path == "/api/product/audit":
+                    if payload:
+                        raise ValueError("巡检不接受额外参数，请通过当前门店选择范围。")
+                    self.send(200, active.product_maintenance.audit())
+                    return
+                if path == "/api/product/auto_fix":
+                    store_id = self.headers.get("X-Store-ID") or getattr(service, "default_id", "local")
+                    self.send(200, active.product_maintenance.auto_fix(payload, STATIC.parent.parent, store_id))
+                    return
                 if path=='/api/eval/jobs':
                     if payload.get('mode')=='live' and not self.model_access():return
                     self.send(202,evaluations().create(payload));return
@@ -437,10 +493,11 @@ def create_server(service, host="127.0.0.1", port=8080, token="", public_hosts=(
                         return
                     result=conversations.turn(conversation_action[1],payload,request_key,cancel_token=token) if conversation_action[2]=='turns' else conversations.focus(conversation_action[1],payload)
                     self.send(200,result)
-                elif path in ('/api/model-settings','/api/model-test'):
+                elif path in ('/api/model-settings','/api/model-test','/api/vision-settings','/api/vision-test'):
                     if not self.model_access():return
-                    if path=='/api/model-test' and payload!={}:raise ValueError('连接测试不接受额外参数。')
-                    self.send(200,model_settings.save(payload) if path=='/api/model-settings' else model_settings.test())
+                    if path.endswith('-test') and payload!={}:raise ValueError('连接测试不接受额外参数。')
+                    settings = model_settings.vision if path.startswith('/api/vision-') else model_settings
+                    self.send(200,settings.save(payload) if path.endswith('-settings') else settings.test())
                 elif path=='/api/store-context':
                     result=active.context_memory.propose(payload);self.send(200 if result['reused'] else 201,result)
                 elif context_action:self.send(200,{'memory':active.context_memory.action(context_action[1],payload)})
@@ -469,10 +526,12 @@ def create_server(service, host="127.0.0.1", port=8080, token="", public_hosts=(
                 else:
                     result = active.create(payload, self.headers.get("Idempotency-Key"))
                     self.send(200 if result["reused"] else 201, result)
-            except (ReviewNotFound,MissionNotFound,OperatingNotFound,ConversationNotFound,DecisionNotFound) as error:
+            except (ReviewNotFound,MissionNotFound,OperatingNotFound,ConversationNotFound,DecisionNotFound,ProductNotFound) as error:
                 self.send(404, {"error": str(error)})
             except (ConflictError, ReviewConflict,MissionConflict,OperatingConflict,DecisionConflict) as error:
                 self.send(409, {"error": str(error)})
+            except VisionError as error:
+                self.send(error.status, {"error": str(error)})
             except AgentError as error:
                 problem=error.public()
                 self.send(503 if problem['retryable'] else 502,{'error':problem['message'],'error_info':problem})

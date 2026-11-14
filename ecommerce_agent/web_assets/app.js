@@ -912,7 +912,9 @@ async function changeStore(fromConversation=false) {
     return;
   }
   approvalPolicyPanel.open = false;
-  ++storeEpoch; ++adEpoch; clearTimeout(pollTimer); resetTask(); adReport = null;
+  ++storeEpoch; ++adEpoch;
+  document.dispatchEvent(new Event("flower-store-changed"));
+  clearTimeout(pollTimer); resetTask(); adReport = null;
   $("ad-shop-label").textContent = `${storeDirectory.find((shop)=>shop.id === currentStore)?.name || "当前门店"} · 正在读取推广账本`;
   $("ad-metrics").replaceChildren(); $("ad-chart").replaceChildren(); $("ad-table").replaceChildren(); $("ad-attention").replaceChildren(); $("ad-export").disabled = true;
   localStorage.setItem("flower-store-id", currentStore);
@@ -927,15 +929,15 @@ async function changeStore(fromConversation=false) {
 async function showModule(module) {
   activeModule=module;
   // 推广账本和导入仍是单店能力，进入时明确显示实际使用的门店，避免总览名义下展示单店数据。
-  if(['advertising','imports','calendar','radar','approval-drafts'].includes(module)&&queryStoreScope==='all'){
+  if(['advertising','imports','calendar','radar','approval-drafts','product-builder'].includes(module)&&queryStoreScope==='all'){
     queryStoreScope='current';localStorage.setItem('flower-query-scope',queryStoreScope);syncStoreWindow();
   }
   document.body.classList.toggle("investigation-active", module==="investigation");
-  if(['imports','calendar','radar','approval-drafts'].includes(module))setInspector(false);
+  if(['imports','calendar','radar','approval-drafts','product-builder'].includes(module))setInspector(false);
   if(module!=="investigation")clearTimeout(pollTimer);
-  const views={overview:"overview-view",investigation:"investigation-workbench",advertising:"advertising-view",imports:"imports-view",calendar:"schedule-view",radar:"risk-view","approval-drafts":"approval-drafts-view"};
+  const views={"product-builder":"product-builder-view",overview:"overview-view",investigation:"investigation-workbench",advertising:"advertising-view",imports:"imports-view",calendar:"schedule-view",radar:"risk-view","approval-drafts":"approval-drafts-view"};
   for(const [key,id] of Object.entries(views)){$(id).hidden=module!==key;$("nav-"+key).classList.toggle("selected",module===key);}
-  $("session-title").textContent={overview:"门店经营概览",investigation:conversation?.comparison?"跨店比较":currentTask?.parsed.sku_id||"新调查",advertising:"推广费用分析",imports:"经营数据导入",calendar:"运营日程",radar:"风险雷达","approval-drafts":"待办与审批草稿"}[module];
+  $("session-title").textContent={"product-builder":"商品基建助手",overview:"门店经营概览",investigation:conversation?.comparison?"跨店比较":currentTask?.parsed.sku_id||"新调查",advertising:"推广费用分析",imports:"经营数据导入",calendar:"运营日程",radar:"风险雷达","approval-drafts":"待办与审批草稿"}[module];
   if(module==='imports')await loadImports();
   if(module==="overview")await loadOverview();
   if(module==="advertising")await loadAdvertising();
@@ -1090,15 +1092,69 @@ async function loadOverview(){
 $("overview-filters").addEventListener("submit",(event)=>{event.preventDefault();loadOverview();});
 
 // 密钥只在提交的瞬间读取；不写入localStorage，也不从后端回显。
-async function loadModelSettings(){
-  $("account-settings-dialog").showModal();loadContextEditor();$("model-settings-notice").textContent="读取本地配置…";
-  try{const settings=await api("/api/model-settings");$("model-nickname").value=settings.nickname;$("model-name").value=settings.model;$("model-enabled").checked=settings.enabled;$("model-api-key").value="";$("model-api-key").placeholder=settings.configured?"已配置 · 留空保留":"请输入 DeepSeek API 密钥";$("model-configuration-state").textContent=settings.configured?"密钥已在本机配置，不会返回浏览器。":"尚未配置密钥。";$("model-settings-notice").textContent="";}
-  catch(error){$("model-settings-notice").textContent=error.message;}
+function showVisionSettings(settings) {
+  $('vision-base-url').value = settings.base_url || '';
+  $('vision-model').value = settings.model || '';
+  $('vision-timeout').value = settings.timeout_seconds || 45;
+  $('vision-api-key').value = '';
+  $('vision-api-key').placeholder = settings.configured ? '已配置 · 留空保留' : '请输入视觉模型 API 密钥';
+  $('vision-configuration-state').textContent = (settings.configured ? '密钥已在本机配置。' : '尚未配置密钥。') +
+    (settings.environment_overrides?.length ? '进程环境变量优先，请同步调整启动环境。' : '');
 }
-async function saveModelSettings(){
-  const payload={nickname:$("model-nickname").value,model:$("model-name").value,enabled:$("model-enabled").checked};
-  if($("model-api-key").value.trim())payload.api_key=$("model-api-key").value.trim();
-  try{const saved=await api("/api/model-settings",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload)});$("model-configuration-state").textContent=saved.configured?"密钥已在本机配置，不会返回浏览器。":"尚未配置密钥。";meta=await api("/api/meta");return saved;}finally{$("model-api-key").value="";}
+
+async function loadModelSettings() {
+  $('account-settings-dialog').showModal();
+  loadContextEditor();
+  $('model-settings-notice').textContent = '读取本地配置…';
+  $('vision-settings-notice').textContent = '读取本地配置…';
+  const results = await Promise.allSettled([api('/api/model-settings'), api('/api/vision-settings')]);
+  const [text, vision] = results;
+  if (text.status === 'fulfilled') {
+    const settings = text.value;
+    $('model-nickname').value = settings.nickname;
+    $('model-base-url').value = settings.base_url;
+    $('model-name').value = settings.model;
+    $('model-enabled').checked = settings.enabled;
+    $('model-api-key').value = '';
+    $('model-api-key').placeholder = settings.configured ? '已配置 · 留空保留' : '请输入文本模型 API 密钥';
+    $('model-configuration-state').textContent = settings.configured ? '密钥已在本机配置。' : '尚未配置密钥。';
+    $('model-settings-notice').textContent = '';
+  } else {
+    $('model-settings-notice').textContent = text.reason.message;
+  }
+  if (vision.status === 'fulfilled') {
+    showVisionSettings(vision.value);
+    $('vision-settings-notice').textContent = '';
+  } else {
+    $('vision-settings-notice').textContent = vision.reason.message;
+  }
+}
+
+async function saveModelSettings() {
+  const payload = {nickname: $('model-nickname').value, model: $('model-name').value.trim(),
+    base_url: $('model-base-url').value.trim(), enabled: $('model-enabled').checked};
+  if ($('model-api-key').value.trim()) payload.api_key = $('model-api-key').value.trim();
+  try {
+    const saved = await api('/api/model-settings', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(payload)});
+    $('model-configuration-state').textContent = saved.configured ? '密钥已在本机配置。' : '尚未配置密钥。';
+    meta = await api('/api/meta');
+    return saved;
+  } finally {
+    $('model-api-key').value = '';
+  }
+}
+
+async function saveVisionSettings() {
+  const payload = {base_url: $('vision-base-url').value.trim(), model: $('vision-model').value.trim(),
+    timeout_seconds: Number($('vision-timeout').value)};
+  if ($('vision-api-key').value.trim()) payload.api_key = $('vision-api-key').value.trim();
+  try {
+    const saved = await api('/api/vision-settings', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(payload)});
+    showVisionSettings(saved);
+    return saved;
+  } finally {
+    $('vision-api-key').value = '';
+  }
 }
 const approvalPolicyPanel = $("approval-policy-panel");
 const saveApprovalPolicyButton = $("save-approval-policy");
@@ -1160,10 +1216,36 @@ $("approval-policy-form").addEventListener("submit", async event => {
 });
 
 $("open-account-settings").addEventListener("click",()=>{approvalPolicyPanel.open=false;$("store-context-panel").open=false;loadModelSettings();});
-$("close-account-settings").addEventListener("click",()=>{$("model-api-key").value="";$("account-settings-dialog").close();});
-$("account-settings-dialog").addEventListener("close",()=>{approvalPolicyPanel.open=false;$("model-api-key").value="";$("workspace-access-token").value="";});
+$("close-account-settings").addEventListener("click",()=>{$("model-api-key").value="";$("vision-api-key").value="";$("account-settings-dialog").close();});
+$("account-settings-dialog").addEventListener("close",()=>{approvalPolicyPanel.open=false;$("model-api-key").value="";$("vision-api-key").value="";$("workspace-access-token").value="";});
 $("model-settings-form").addEventListener("submit",async event=>{event.preventDefault();event.submitter.disabled=true;try{await saveModelSettings();$("model-settings-notice").textContent="已保存，对新调查生效。";}catch(error){$("model-settings-notice").textContent=error.message;}finally{event.submitter.disabled=false;}});
-$("test-model-connection").addEventListener("click",async()=>{const button=$("test-model-connection");button.disabled=true;$("model-settings-notice").textContent="正在测试官方接口与工具调用…";try{await saveModelSettings();const result=await api("/api/model-test",{method:"POST",headers:{"Content-Type":"application/json"},body:"{}"});$("model-settings-notice").textContent=`${result.model} 连接成功，Tool Calling 已验证。`;}catch(error){$("model-settings-notice").textContent=error.message;}finally{button.disabled=false;}});
+$("test-model-connection").addEventListener("click",async()=>{const button=$("test-model-connection");button.disabled=true;$("model-settings-notice").textContent="正在测试连接与工具调用…";try{await saveModelSettings();const result=await api("/api/model-test",{method:"POST",headers:{"Content-Type":"application/json"},body:"{}"});$("model-settings-notice").textContent=`${result.model} 连接成功，Tool Calling 已验证。`;}catch(error){$("model-settings-notice").textContent=error.message;}finally{button.disabled=false;}});
+$('vision-settings-form').addEventListener('submit', async (event) => {
+  event.preventDefault();
+  event.submitter.disabled = true;
+  try {
+    await saveVisionSettings();
+    $('vision-settings-notice').textContent = '已保存，对后续识图和标题修正生效。';
+  } catch (error) {
+    $('vision-settings-notice').textContent = error.message;
+  } finally {
+    event.submitter.disabled = false;
+  }
+});
+$('test-vision-connection').addEventListener('click', async () => {
+  const button = $('test-vision-connection');
+  button.disabled = true;
+  $('vision-settings-notice').textContent = '正在使用测试图片验证连接…';
+  try {
+    await saveVisionSettings();
+    const result = await api('/api/vision-test', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: '{}'});
+    $('vision-settings-notice').textContent = result.model + ' 图片识别连接成功。';
+  } catch (error) {
+    $('vision-settings-notice').textContent = error.message;
+  } finally {
+    button.disabled = false;
+  }
+});
 $("connect-workspace").addEventListener("click",()=>{sessionStorage.setItem("signal-access-token",$("workspace-access-token").value);$("workspace-access-token").value="";$("account-settings-dialog").close();initialize();});
 
 // 经营背景是人工来源的上下文，不提供模型自动写入或从报告自动总结入库的入口。
@@ -1256,3 +1338,661 @@ $("store-context-panel").addEventListener('toggle',()=>{
   $("account-settings-title").textContent=opened?'本店经营背景':'账号与 API 设置';
   $("account-settings-dialog").scrollTop=0;
 });
+
+
+// 商品基建助手：上传图片到服务端识图；图片、标签和请求状态仅保留在当前页面。
+(() => {
+  const element = (id) => document.getElementById(id);
+  const dimensions = [
+    {key: 'prefix', label: '优美的四字词语', color: 'gold'},
+    {key: 'spec', label: '商品规格', color: 'blue'},
+    {key: 'main_material', label: '主花材品种', color: 'rose'},
+    {key: 'mixed_material', label: '混搭花材', color: 'sage'},
+    {key: 'product_type', label: '商品类型', color: 'lavender'},
+    {key: 'keyword', label: '关键词', color: 'amber'},
+    {key: 'target_audience', label: '目标对象', color: 'cyan'},
+    {key: 'custom', label: '自定义命名', color: 'gold'},
+  ];
+  let values = dimensions.map(() => '');
+  let recognizedValues = [...values];
+  const typeOptions = ['花束', '抱抱桶', '礼盒', '花盒', '花篮', '瓶插花', '盆栽'];
+  const keywordOptions = ['生日礼物', '生日鲜花', '生日花束'];
+  const audienceOptions = ['女友', '爱人', '闺蜜', '恋人', '妈妈', '母亲', '老师', '朋友', '长辈', '同事'];
+  let order = dimensions.map((_, index) => index);
+  let included = new Set([0, 1, 2, 4, 5, 6, 7]);
+  let specUnit = '支';
+  let materialColor = '';
+  let customColor = '';
+  let typeCustom = false;
+  let pointerDrag = null;
+  let deliverySuffix = '花店送花上门';
+  let previewUrl = '';
+  let lastFile = null;
+  let uploadVersion = 0;
+  let pending = null;
+  let busy = false;
+  let toastTimer;
+
+  function toast(message) {
+    clearTimeout(toastTimer);
+    element('pb-toast').textContent = message;
+    element('pb-toast').hidden = false;
+    toastTimer = setTimeout(() => { element('pb-toast').hidden = true; }, 3600);
+  }
+
+  const compact = (value) => (value || '').replace(/[\s、,，/;；|]+/g, '');
+  const audiences = (value) => (value || '').replace(/送/g, '、').split(/[\s、,，/;；|]+/).filter(Boolean);
+
+  function assignFields(fields) {
+    values = dimensions.map((dimension) => dimension.key === 'custom' ? '' : fields[dimension.key] || '');
+    const spec = (values[1] || '').match(/^(\d+)\s*(支|枝|朵|束|盒|盆)?$/);
+    specUnit = spec && ['束', '盒', '盆'].includes(spec[2]) ? spec[2] : '支';
+    values[1] = spec ? spec[1] : '';
+    values[6] = [...new Set(audiences(values[6]))].join('、');
+    const color = (values[2] || '').match(/^(红色|粉色|白色|蓝色|紫色|黄色|橙色|香槟色|混色|[红粉白蓝紫黄橙](?=玫瑰|康乃馨|绣球|郁金香|洋桔梗|菊))/);
+    materialColor = color ? (color[1].length === 1 ? color[1] + '色' : color[1]) : '';
+    customColor = '';
+    typeCustom = Boolean(values[4] && !typeOptions.includes(values[4]));
+  }
+
+  function mainMaterial() {
+    const material = compact(values[2]);
+    const color = materialColor === 'custom' ? compact(customColor) : materialColor;
+    if (!material || !color) return material;
+    const base = material.startsWith(color) ? material.slice(color.length)
+      : material.replace(/^(?:红色|粉色|白色|蓝色|紫色|黄色|橙色|香槟色|混色)|^(?:红|粉|白|蓝|紫|黄|橙)(?=玫瑰|康乃馨|绣球|郁金香|洋桔梗|菊)/, '');
+    return color + base;
+  }
+
+  function syncMaterialColor(previousColor) {
+    const material = compact(values[2]);
+    if (!material) return;
+    const base = previousColor && material.startsWith(previousColor) ? material.slice(previousColor.length)
+      : material.replace(/^(?:红色|粉色|白色|蓝色|紫色|黄色|橙色|香槟色|混色)|^(?:红|粉|白|蓝|紫|黄|橙)(?=玫瑰|康乃馨|绣球|郁金香|洋桔梗|菊)/, '');
+    const color = materialColor === 'custom' ? compact(customColor) : materialColor;
+    values[2] = color + base;
+    const input = element('pb-tag-2');
+    if (input && values[2] !== null) input.value = values[2];
+    updateTitle();
+  }
+
+  function updateTitle() {
+    const pieces = [];
+    for (const index of order) {
+      if (!included.has(index) || values[index] === null) continue;
+      let value = compact(values[index]);
+      if (index === 0 && value) value = '【' + value.replace(/^[【\[]+|[】\]]+$/g, '') + '】';
+      if (index === 1) value = /^[1-9]\d{0,3}$/.test(value) ? value + specUnit : '';
+      if (index === 2) value = mainMaterial();
+      if (index === 6) value = [...new Set(audiences(values[index]))].map((name) => '送' + name).join('');
+      if (value) pieces.push(value);
+      if (index === 5 && element('pb-holiday').value) pieces.push(element('pb-holiday').value + '限定');
+    }
+    const title = pieces.length ? pieces.join('') + deliverySuffix : '';
+    element('pb-title-preview').textContent = title || '填写标签后生成商品标题';
+    element('pb-count').textContent = Array.from(title).length + ' 字';
+    element('pb-copy').disabled = busy || !title;
+    return title;
+  }
+
+  function moveDimension(source, target) {
+    if (busy || source === target || !order.includes(source) || !order.includes(target)) return;
+    const from = order.indexOf(source);
+    const to = order.indexOf(target);
+    order.splice(from, 1);
+    order.splice(to, 0, source);
+    renderTags();
+    element('pb-drag-' + source).focus();
+  }
+
+  function clearDrag() {
+    const active = pointerDrag;
+    pointerDrag = null;
+    if (active?.element.hasPointerCapture(active.pointerId)) {
+      active.element.releasePointerCapture(active.pointerId);
+    }
+    element('pb-tags').querySelectorAll('.is-dragging, .is-drop-target').forEach((item) => {
+      item.classList.remove('is-dragging', 'is-drop-target');
+      item.style.transform = '';
+    });
+    document.body.classList.remove('pb-sorting');
+  }
+
+  function addSelect(group, id, label, options, value, onChange) {
+    const select = document.createElement('select');
+    select.id = id;
+    select.setAttribute('aria-label', label);
+    select.disabled = busy;
+    for (const [key, title] of options) {
+      const option = document.createElement('option');
+      option.value = key;
+      option.textContent = title;
+      select.append(option);
+    }
+    select.value = value;
+    select.addEventListener('change', () => onChange(select.value));
+    group.append(select);
+    return select;
+  }
+
+  function addPresets(group, options, index, multipleAudiences = false) {
+    const presets = document.createElement('div');
+    presets.className = 'pb-presets';
+    for (const option of options) {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.textContent = option;
+      button.disabled = busy;
+      const selected = multipleAudiences ? audiences(values[index]).includes(option) : (values[index] || '').includes(option);
+      button.setAttribute('aria-pressed', String(selected));
+      button.addEventListener('click', () => {
+        if (multipleAudiences) {
+          const current = [...new Set(audiences(values[index]))];
+          values[index] = (current.includes(option) ? current.filter((name) => name !== option) : [...current, option]).join('、');
+        } else {
+          const current = values[index] || '';
+          values[index] = current.includes(option) ? current.replaceAll(option, '') : current + option;
+        }
+        renderTags();
+      });
+      presets.append(button);
+    }
+    group.append(presets);
+  }
+
+  function renderTags() {
+    clearDrag();
+    const container = element('pb-tags');
+    container.replaceChildren();
+    order.forEach((index, position) => {
+      const dimension = dimensions[index];
+      const group = document.createElement('div');
+      group.className = 'pb-dimension pb-' + dimension.color;
+      group.dataset.dimension = String(index);
+      const heading = document.createElement('div');
+      heading.className = 'pb-dimension-heading';
+      const handle = document.createElement('button');
+      handle.id = 'pb-drag-' + index;
+      handle.type = 'button';
+      handle.className = 'pb-drag-handle';
+      handle.textContent = '⠿';
+      handle.draggable = false;
+      handle.disabled = busy;
+      handle.setAttribute('aria-label', '拖动排序：' + dimension.label);
+      handle.title = '拖动排序，或聚焦后按方向键调整';
+      handle.addEventListener('keydown', (event) => {
+        const step = {ArrowLeft: -1, ArrowUp: -1, ArrowRight: 1, ArrowDown: 1}[event.key];
+        if (!step) return;
+        event.preventDefault();
+        const target = order[order.indexOf(index) + step];
+        if (target !== undefined) moveDimension(index, target);
+      });
+      // 使用统一 Pointer Events，标题栏和卡片空白都能拖动；表单控件保留编辑行为。
+      group.addEventListener('pointerdown', (event) => {
+        if (busy || event.button !== 0 || pointerDrag) return;
+        const control = event.target.closest('input, textarea, select, button, a, label');
+        if (control && !control.closest('.pb-dimension-heading')) return;
+        event.preventDefault();
+        pointerDrag = {index, element: group, pointerId: event.pointerId,
+          startX: event.clientX, startY: event.clientY, target: index, moved: false};
+        group.setPointerCapture(event.pointerId);
+      });
+      group.addEventListener('pointermove', (event) => {
+        const active = pointerDrag;
+        if (!active || active.index !== index || active.pointerId !== event.pointerId) return;
+        const dx = event.clientX - active.startX;
+        const dy = event.clientY - active.startY;
+        if (!active.moved && Math.hypot(dx, dy) < 6) return;
+        active.moved = true;
+        event.preventDefault();
+        group.classList.add('is-dragging');
+        document.body.classList.add('pb-sorting');
+        group.style.transform = 'translate(' + dx + 'px, ' + dy + 'px)';
+        const target = document.elementFromPoint(event.clientX, event.clientY)?.closest('[data-dimension]');
+        container.querySelectorAll('.is-drop-target').forEach((item) => item.classList.remove('is-drop-target'));
+        active.target = target && container.contains(target) ? Number(target.dataset.dimension) : index;
+        if (target && active.target !== index) target.classList.add('is-drop-target');
+      });
+      group.addEventListener('pointerup', (event) => {
+        const active = pointerDrag;
+        if (!active || active.index !== index || active.pointerId !== event.pointerId) return;
+        const target = active.target;
+        const moved = active.moved;
+        clearDrag();
+        if (moved) moveDimension(index, target);
+      });
+      group.addEventListener('pointercancel', clearDrag);
+      group.addEventListener('lostpointercapture', () => {
+        if (pointerDrag?.element === group) clearDrag();
+      });
+      group.addEventListener('dragstart', (event) => {
+        if (pointerDrag) event.preventDefault();
+      });
+      const label = document.createElement('label');
+      label.htmlFor = 'pb-tag-' + index;
+      label.textContent = String(position + 1).padStart(2, '0') + ' / ' + dimension.label;
+      heading.append(handle, label);
+      group.append(heading);
+
+      const includeLabel = document.createElement('label');
+      includeLabel.className = 'pb-include';
+      const include = document.createElement('input');
+      include.type = 'checkbox';
+      include.checked = included.has(index);
+      include.disabled = busy;
+      include.setAttribute('aria-label', dimension.label + '用于标题');
+      include.addEventListener('change', () => {
+        if (include.checked) included.add(index);
+        else included.delete(index);
+        updateTitle();
+      });
+      includeLabel.append(include, document.createTextNode('用于标题'));
+      group.append(includeLabel);
+
+      if (values[index] !== null) {
+        if (index === 2) {
+          addSelect(group, 'pb-material-color', '主花材颜色', [
+            ['', '原色 / 待确认'], ...['红色', '粉色', '白色', '蓝色', '紫色', '黄色', '橙色', '香槟色', '混色'].map((color) => [color, color]),
+            ['custom', '自定义颜色'],
+          ], materialColor, (value) => {
+            const previousColor = materialColor === 'custom' ? compact(customColor) : materialColor;
+            materialColor = value;
+            syncMaterialColor(previousColor);
+            renderTags();
+          });
+          if (materialColor === 'custom') {
+            const color = document.createElement('input');
+            color.id = 'pb-custom-color';
+            color.placeholder = '填写颜色';
+            color.setAttribute('aria-label', '自定义花材颜色');
+            color.maxLength = 12;
+            color.value = customColor;
+            color.disabled = busy;
+            color.addEventListener('input', () => {
+              const previousColor = compact(customColor);
+              customColor = color.value;
+              syncMaterialColor(previousColor);
+            });
+            group.append(color);
+          }
+        }
+        if (index === 4) {
+          addSelect(group, 'pb-type-choice', '商品类型预设', [
+            ['', '选择商品类型'], ...typeOptions.map((type) => [type, type]), ['custom', '自定义'],
+          ], typeCustom ? 'custom' : values[index], (value) => {
+            typeCustom = value === 'custom';
+            values[index] = typeCustom ? '' : value;
+            renderTags();
+            if (typeCustom) element('pb-tag-' + index).focus();
+          });
+        }
+        const tag = document.createElement('div');
+        tag.className = 'pb-tag' + (index === 4 && typeCustom ? ' pb-type-custom' : '');
+        const input = document.createElement(index >= 5 ? 'textarea' : 'input');
+        input.id = 'pb-tag-' + index;
+        input.value = values[index];
+        input.placeholder = index === 1 ? '填写数量' : index === 7 ? '输入自定义命名内容' : '待填写';
+        input.maxLength = index === 0 ? 4 : 100;
+        input.disabled = busy;
+        input.setAttribute('aria-label', dimension.label);
+        if (index >= 5) input.rows = 2;
+        if (index === 1) {
+          input.type = 'number';
+          input.min = '1';
+          input.max = '9999';
+          input.step = '1';
+          input.inputMode = 'numeric';
+        }
+        input.addEventListener('input', () => {
+          values[index] = input.value;
+          updateTitle();
+          if (index === 5 || index === 6) {
+            const buttons = group.querySelectorAll('.pb-presets button');
+            buttons.forEach((button) => button.setAttribute('aria-pressed', String(index === 6
+              ? audiences(values[index]).includes(button.textContent)
+              : values[index].includes(button.textContent))));
+          }
+        });
+        if (index === 4 && !typeCustom) {
+          input.hidden = true;
+          input.disabled = true;
+        }
+        const remove = document.createElement('button');
+        remove.type = 'button';
+        remove.textContent = '×';
+        remove.disabled = busy;
+        remove.setAttribute('aria-label', '删除' + dimension.label);
+        remove.addEventListener('click', () => {
+          values[index] = null;
+          renderTags();
+          element('pb-tag-' + index).focus();
+        });
+        tag.append(input);
+        if (index === 1) {
+          addSelect(tag, 'pb-spec-unit', '规格单位', ['支', '朵', '枝', '束', '盒', '盆'].map((unit) => [unit, unit]),
+            specUnit, (value) => { specUnit = value; updateTitle(); });
+        }
+        tag.append(remove);
+        if (index === 4) tag.prepend(group.querySelector('#pb-type-choice'));
+        group.append(tag);
+        if (index === 5) addPresets(group, keywordOptions, index);
+        if (index === 6) addPresets(group, audienceOptions, index, true);
+      } else {
+        const add = document.createElement('button');
+        add.id = 'pb-tag-' + index;
+        add.type = 'button';
+        add.className = 'pb-add';
+        add.textContent = '＋ 添加' + dimension.label;
+        add.disabled = busy;
+        add.addEventListener('click', () => {
+          values[index] = '';
+          renderTags();
+          element(index === 4 ? 'pb-type-choice' : 'pb-tag-' + index).focus();
+        });
+        group.append(add);
+      }
+      if (index === 5 && element('pb-holiday').value) {
+        const holiday = document.createElement('span');
+        holiday.className = 'pb-holiday-tag';
+        holiday.textContent = element('pb-holiday').value + '限定';
+        group.append(holiday);
+      }
+      container.append(group);
+    });
+    element('pb-reset-order').disabled = busy;
+    element('pb-restore').disabled = busy;
+    element('pb-retry').disabled = busy || !lastFile;
+    element('pb-drop').setAttribute('aria-busy', String(busy));
+    updateTitle();
+  }
+
+  async function loadImage(file) {
+    if (!file) return;
+    pending?.abort();
+    const version = ++uploadVersion;
+    const requestStore = currentStore;
+    const requestEpoch = storeEpoch;
+    const holiday = element('pb-holiday').value;
+    busy = false;
+    element('pb-drop').classList.remove('is-dragging');
+    element('pb-file').value = '';
+    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type) || file.size > 10 * 1024 * 1024) {
+      renderTags();
+      element('pb-status').textContent = '请选择 10 MB 以内的 JPG、PNG 或 WebP 图片。';
+      return;
+    }
+    const controller = new AbortController();
+    pending = controller;
+    const isCurrent = () => version === uploadVersion && requestStore === currentStore && requestEpoch === storeEpoch;
+    const url = URL.createObjectURL(file);
+    const image = new Image();
+    image.src = url;
+    element('pb-status').textContent = '正在读取图片…';
+    try {
+      await image.decode();
+    } catch {
+      URL.revokeObjectURL(url);
+      if (isCurrent()) {
+        renderTags();
+        element('pb-status').textContent = '图片无法读取，请重新选择有效图片。';
+      }
+      return;
+    }
+    if (!isCurrent()) {
+      URL.revokeObjectURL(url);
+      return;
+    }
+    if (previewUrl) URL.revokeObjectURL(previewUrl);
+    previewUrl = url;
+    lastFile = file;
+    element('pb-preview').src = url;
+    element('pb-filename').textContent = file.name;
+    assignFields({});
+    recognizedValues = [...values];
+    busy = true;
+    renderTags();
+    element('pb-results').hidden = false;
+    element('pb-result-note').textContent = 'AI 正在识别花材与商品形态';
+    element('pb-status').textContent = 'AI 识别中，请稍候…';
+    const timeout = setTimeout(() => controller.abort(), 65000);
+    try {
+      const form = new FormData();
+      form.append('image', file);
+      form.append('store_id', requestStore || 'local');
+      form.append('holiday', holiday);
+      const result = await api('/api/product/identify', {method: 'POST', body: form, signal: controller.signal});
+      if (!isCurrent()) return;
+      if (!result.fields || dimensions.slice(0, 7).some((dimension) => typeof result.fields[dimension.key] !== 'string')) {
+        throw new Error('识别结果格式不完整。');
+      }
+      const configuredSuffix = result.store_context?.delivery_suffix;
+      if (['花店送花上门', '鲜花免费配送'].includes(configuredSuffix)) deliverySuffix = configuredSuffix;
+      recognizedValues = dimensions.map((dimension) => result.fields[dimension.key] || '');
+      assignFields(result.fields);
+      const incomplete = values.slice(0, 7).some((value) => !value.trim());
+      element('pb-status').textContent = incomplete ? '识别完成，空白项请人工确认后填写。' : '识别完成，可编辑标签并复制标题。';
+      element('pb-result-note').textContent = '图片识别结果 · 命名与用途建议可编辑';
+    } catch (error) {
+      if (!isCurrent()) return;
+      assignFields({});
+      recognizedValues = [...values];
+      const reason = error.name === 'AbortError' ? '请求超时，请重新识别。' : error.message;
+      element('pb-status').textContent = 'AI 识别失败，请手动添加标签。' + (reason || '请检查模型配置或网络。');
+      element('pb-result-note').textContent = '手动填写模式';
+      toast('AI 识别失败，请手动添加标签');
+    } finally {
+      clearTimeout(timeout);
+      if (isCurrent()) {
+        pending = null;
+        busy = false;
+        renderTags();
+      }
+    }
+  }
+
+  element('nav-product-builder').addEventListener('click', () => showModule('product-builder'));
+  element('pb-drop').addEventListener('click', () => element('pb-file').click());
+  element('pb-file').addEventListener('change', (event) => loadImage(event.target.files[0]));
+  ['dragenter', 'dragover'].forEach((type) => element('pb-drop').addEventListener(type, (event) => {
+    event.preventDefault();
+    event.dataTransfer.dropEffect = 'copy';
+    element('pb-drop').classList.add('is-dragging');
+  }));
+  element('pb-drop').addEventListener('dragleave', (event) => {
+    if (!element('pb-drop').contains(event.relatedTarget)) element('pb-drop').classList.remove('is-dragging');
+  });
+  element('pb-drop').addEventListener('drop', (event) => {
+    event.preventDefault();
+    element('pb-drop').classList.remove('is-dragging');
+    loadImage(event.dataTransfer.files[0]);
+  });
+  element('pb-holiday').addEventListener('change', () => {
+    if (lastFile) loadImage(lastFile);
+    else renderTags();
+  });
+  element('pb-retry').addEventListener('click', () => loadImage(lastFile));
+  element('pb-reset-order').addEventListener('click', () => {
+    if (busy) return;
+    order = dimensions.map((_, index) => index);
+    renderTags();
+    toast('已恢复默认排序');
+  });
+  element('pb-restore').addEventListener('click', () => {
+    assignFields(Object.fromEntries(dimensions.map((dimension, index) => [dimension.key, recognizedValues[index]])));
+    renderTags();
+  });
+  element('pb-copy').addEventListener('click', async () => {
+    if (element('pb-copy').disabled) return;
+    try {
+      await navigator.clipboard.writeText(updateTitle());
+      toast('标题已复制！');
+    } catch {
+      toast('复制失败，请选中标题手动复制。');
+    }
+  });
+
+  function reset() {
+    ++uploadVersion;
+    pending?.abort();
+    pending = null;
+    lastFile = null;
+    busy = false;
+    if (previewUrl) URL.revokeObjectURL(previewUrl);
+    previewUrl = '';
+    element('pb-preview').removeAttribute('src');
+    element('pb-results').hidden = true;
+    element('pb-status').textContent = '';
+    element('pb-holiday').value = '';
+    deliverySuffix = '花店送花上门';
+    order = dimensions.map((_, index) => index);
+    included = new Set([0, 1, 2, 4, 5, 6, 7]);
+    specUnit = '支';
+    materialColor = '';
+    customColor = '';
+    typeCustom = false;
+    clearDrag();
+    element('pb-toast').hidden = true;
+    values = dimensions.map(() => '');
+    recognizedValues = [...values];
+    renderTags();
+  }
+  document.addEventListener('flower-store-changed', reset);
+  window.addEventListener('pagehide', reset);
+})();
+
+
+// 商品巡检独立管理列表状态，换店和重新扫描后不接收旧响应。
+(() => {
+  const element = (id) => document.getElementById(id);
+  let rows = [];
+  let scanned = 0;
+  let version = 0;
+  let scanning = false;
+  const fixing = new Set();
+  const requests = new Set();
+  const labels = {pending: '待修正', fixing: '修正中…', fixed: '已修正', needs_review: '待人工确认', failed: '修正失败'};
+
+  function render(message) {
+    const body = element('pb-audit-rows');
+    body.replaceChildren();
+    element('pb-audit-scan').disabled = scanning || fixing.size > 0;
+    if (message) element('pb-audit-status').textContent = message;
+    for (const item of rows) {
+      const row = document.createElement('tr');
+      const status = fixing.has(item.product_id) ? 'fixing' : item.status;
+      row.className = 'pb-audit-' + status;
+      const id = document.createElement('td');
+      id.textContent = item.product_id;
+      const title = document.createElement('td');
+      title.className = 'pb-audit-product-title';
+      title.textContent = item.current_title;
+      const issues = document.createElement('td');
+      issues.textContent = item.issues.join('、') || '命名与打标已达标';
+      const state = document.createElement('td');
+      const badge = document.createElement('span');
+      badge.className = 'pb-audit-badge';
+      badge.textContent = labels[status] || '待修正';
+      state.append(badge);
+      const action = document.createElement('td');
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'pb-secondary';
+      button.dataset.productId = item.product_id;
+      button.textContent = status === 'fixed' ? '已完成' : status === 'fixing' ? '修正中…' : '一键修正';
+      button.disabled = status === 'fixed' || status === 'fixing' || scanning;
+      button.setAttribute('aria-label', button.textContent + ' ' + item.product_id);
+      action.append(button);
+      row.append(id, title, issues, state, action);
+      body.append(row);
+    }
+    if (!rows.length) {
+      const row = document.createElement('tr');
+      const cell = document.createElement('td');
+      cell.colSpan = 5;
+      cell.textContent = scanning ? '正在读取商品…' : '暂无未达标商品';
+      row.append(cell);
+      body.append(row);
+    }
+  }
+
+  async function scan() {
+    if (scanning || fixing.size) return;
+    const active = ++version;
+    const store = currentStore;
+    const epoch = storeEpoch;
+    const controller = new AbortController();
+    requests.add(controller);
+    scanning = true;
+    render('正在扫描当前门店商品…');
+    try {
+      const result = await api('/api/product/audit', {signal: controller.signal});
+      if (active !== version || store !== currentStore || epoch !== storeEpoch) return;
+      rows = result.products;
+      scanned = result.scanned;
+      render('已扫描 ' + scanned + ' 件商品，发现 ' + result.total + ' 件未达标商品。');
+    } catch (error) {
+      if (active === version && store === currentStore && epoch === storeEpoch) {
+        render('扫描失败，请重试。' + error.message);
+      }
+    } finally {
+      requests.delete(controller);
+      if (active === version) {
+        scanning = false;
+        render();
+      }
+    }
+  }
+
+  async function fix(productId) {
+    const item = rows.find((row) => row.product_id === productId);
+    if (!item || fixing.has(productId) || item.status === 'fixed' || scanning) return;
+    const active = version;
+    const store = currentStore;
+    const epoch = storeEpoch;
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 65000);
+    requests.add(controller);
+    fixing.add(productId);
+    render();
+    try {
+      const result = await api('/api/product/auto_fix', {
+        method: 'POST', headers: {'Content-Type': 'application/json'}, signal: controller.signal,
+        body: JSON.stringify({product_id: productId, expected_revision: item.revision}),
+      });
+      if (active !== version || store !== currentStore || epoch !== storeEpoch) return;
+      Object.assign(item, result.product);
+      const remaining = rows.filter((row) => row.status !== 'fixed').length;
+      render(result.product.status === 'fixed'
+        ? '修正已保存，当前列表剩余 ' + remaining + ' 件待处理商品。'
+        : '商品信息不足，已保留原始标题，请人工确认。');
+    } catch (error) {
+      if (active !== version || store !== currentStore || epoch !== storeEpoch) return;
+      item.status = 'failed';
+      item.issues = [error.status === 409 ? '商品已变化，请重新扫描。' : '自动修正暂不可用，请稍后重试。'];
+      render('修正失败，原始商品信息已保留。');
+    } finally {
+      clearTimeout(timeout);
+      requests.delete(controller);
+      if (active === version) {
+        fixing.delete(productId);
+        render();
+      }
+    }
+  }
+
+  element('pb-audit-scan').addEventListener('click', scan);
+  element('pb-audit-rows').addEventListener('click', (event) => {
+    const button = event.target.closest('button[data-product-id]');
+    if (button) fix(button.dataset.productId);
+  });
+  document.addEventListener('flower-store-changed', () => {
+    ++version;
+    for (const request of requests) request.abort();
+    requests.clear();
+    fixing.clear();
+    scanning = false;
+    rows = [];
+    scanned = 0;
+    render('门店已切换，请重新扫描。');
+  });
+})();

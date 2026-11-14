@@ -8,7 +8,7 @@ import uuid
 from contextlib import contextmanager
 from datetime import date
 
-from .routing import ROUTES, route_question
+from .routing import route_question
 from .task_parser import parse_dates, shanghai_today
 from .time_scope import has_window
 from .scope_patch import product_patch
